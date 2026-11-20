@@ -8,9 +8,12 @@ import type { Draw } from "../engine/draw";
  *   ^  spikes
  *   b  pressure plate (held down by Iris or an echo standing on it)
  *   D  door (solid while closed; stack two for a 2-tile door). Doors open while any plate is held
- *   P  player spawn
+ *   P  player spawn (ASCII drafts only; Tiled rooms use "spawn" point objects)
  *   .  empty
- * Outside the room, left/right/top count as walls; below the bottom is the void.
+ * Outside the room, edges lead into the neighbouring room when there is one (see World);
+ * otherwise left/right/top count as walls and below the bottom is the void.
+ *
+ * Points (spawns, checkpoints) are "feet" positions: the bottom-centre of what stands there.
  */
 export type Tile = "#" | "-" | "^" | "b" | "D" | ".";
 
@@ -19,6 +22,15 @@ export interface Rect {
   y: number;
   w: number;
   h: number;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Checkpoint extends Point {
+  active: boolean;
 }
 
 export function overlaps(a: Rect, b: Rect): boolean {
@@ -30,7 +42,12 @@ export class Level {
   readonly rows: number;
   readonly width: number;
   readonly height: number;
-  readonly spawn: { x: number; y: number };
+  readonly name: string;
+  /** Respawn spots (Tiled "spawn" objects). */
+  readonly spawns: Point[];
+  readonly checkpoints: Checkpoint[];
+  /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
+  outside: ((tx: number, ty: number) => Tile | null) | null = null;
   /** Trigger zones of the pressure plates (the lower part of their tile). */
   readonly plates: Rect[] = [];
   /** Door tiles, as rects. */
@@ -39,17 +56,18 @@ export class Level {
   platesPressed: boolean[] = [];
   private readonly tiles: Tile[][];
 
-  constructor(map: string[]) {
+  constructor(map: string[], opts: { name?: string; spawns?: Point[]; checkpoints?: Point[] } = {}) {
+    this.name = opts.name ?? "room";
     this.rows = map.length;
     this.cols = map[0].length;
     this.width = this.cols * TILE;
     this.height = this.rows * TILE;
-    let spawn = { x: TILE, y: TILE };
+    const spawns: Point[] = [...(opts.spawns ?? [])];
     this.tiles = map.map((row, ty) => {
       if (row.length !== this.cols) throw new Error(`Level row ${ty} is ${row.length} wide, expected ${this.cols}`);
       return [...row].map((ch, tx) => {
         if (ch === "P") {
-          spawn = { x: tx * TILE, y: ty * TILE };
+          spawns.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE });
           return ".";
         }
         if (ch === "b") this.plates.push({ x: tx * TILE + 1, y: ty * TILE + 10, w: TILE - 2, h: 6 });
@@ -58,13 +76,42 @@ export class Level {
       });
     });
     this.platesPressed = this.plates.map(() => false);
-    this.spawn = spawn;
+    if (spawns.length === 0) spawns.push({ x: TILE * 1.5, y: this.height - TILE });
+    this.spawns = spawns;
+    this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ ...c, active: false }));
+  }
+
+  /** Default spawn (first one). */
+  get spawn(): Point {
+    return this.spawns[0];
+  }
+
+  /** The spawn closest to a position (used when entering a room). */
+  nearestSpawn(p: Point): Point {
+    return this.spawns.reduce((best, s) => (Math.hypot(s.x - p.x, s.y - p.y) < Math.hypot(best.x - p.x, best.y - p.y) ? s : best));
+  }
+
+  /** Touch zone of a checkpoint crystal. */
+  static checkpointRect(c: Point): Rect {
+    return { x: c.x - 5, y: c.y - 14, w: 10, h: 14 };
+  }
+
+  /** Tile inside the room only (no neighbour lookup). */
+  ownTile(tx: number, ty: number): Tile {
+    return this.tiles[ty][tx];
   }
 
   tile(tx: number, ty: number): Tile {
-    if (ty >= this.rows) return ".";
-    if (tx < 0 || tx >= this.cols || ty < 0) return "#";
-    return this.tiles[ty][tx];
+    if (tx >= 0 && tx < this.cols && ty >= 0 && ty < this.rows) return this.tiles[ty][tx];
+    const n = this.outside?.(tx, ty);
+    if (n) return n;
+    if (ty >= this.rows) return "."; // the void
+    return "#";
+  }
+
+  /** Is there a neighbouring room past this edge point? (tile coords) */
+  hasNeighbour(tx: number, ty: number): boolean {
+    return (this.outside?.(tx, ty) ?? null) !== null;
   }
 
   private overlapping(r: Rect, fn: (t: Tile, tx: number, ty: number) => boolean): boolean {
@@ -100,7 +147,8 @@ export class Level {
 
   /** Autotile index: bit set = that side touches air (top 1, right 2, bottom 4, left 8). */
   private mask(tx: number, ty: number): number {
-    const air = (x: number, y: number) => y >= 0 && y < this.rows && x >= 0 && x < this.cols && this.tiles[y][x] !== "#";
+    // outside the room: the neighbour's tiles (or solid rock) so walls join up seamlessly
+    const air = (x: number, y: number) => this.tile(x, y) !== "#";
     return (air(tx, ty - 1) ? 1 : 0) | (air(tx + 1, ty) ? 2 : 0) | (air(tx, ty + 1) ? 4 : 0) | (air(tx - 1, ty) ? 8 : 0);
   }
 
@@ -124,5 +172,6 @@ export class Level {
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
       }
     }
+    for (const c of this.checkpoints) draw.frame(draw.img.props, c.active ? 4 : 3, c.x - 8 - camX, c.y - 16 - camY);
   }
 }

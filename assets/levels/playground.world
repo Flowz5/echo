@@ -1,0 +1,27 @@
+{
+ "type": "world",
+ "onlyShowAdjacentMaps": false,
+ "maps": [
+  {
+   "fileName": "start.tmj",
+   "x": 0,
+   "y": 0,
+   "width": 320,
+   "height": 192
+  },
+  {
+   "fileName": "playground.tmj",
+   "x": 320,
+   "y": 0,
+   "width": 928,
+   "height": 224
+  },
+  {
+   "fileName": "summit.tmj",
+   "x": 960,
+   "y": -192,
+   "width": 320,
+   "height": 192
+  }
+ ]
+}

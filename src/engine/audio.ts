@@ -20,7 +20,8 @@ export type SfxName =
   | "echoAppear"
   | "echoShatter"
   | "doorOpen"
-  | "doorClose";
+  | "doorClose"
+  | "checkpoint";
 
 /**
  * Audio graph: music bus + sfx bus -> compressor -> speakers.
@@ -167,6 +168,12 @@ export class AudioEngine {
       case "doorClose":
         s.tone(out, { freq: 220, to: 90, t, dur: 0.2, wave: "square", gain: 0.12 });
         s.noise(out, { t, dur: 0.15, gain: 0.3, type: "lowpass", freq: 500 });
+        break;
+      case "checkpoint":
+        ["A5", "E6", "A6"].forEach((n, i) =>
+          s.tone(out, { freq: noteFreq(n), t: t + i * 0.07, dur: 0.35, wave: "triangle", gain: 0.28, release: 0.25 }),
+        );
+        s.noise(out, { t, dur: 0.3, gain: 0.12, type: "highpass", freq: 6000 });
         break;
       case "respawn":
         ["C5", "E5", "G5", "C6"].forEach((n, i) =>

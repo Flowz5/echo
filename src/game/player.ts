@@ -148,17 +148,27 @@ export class Player {
   private readonly scarf = new Scarf();
 
   constructor(
-    private readonly level: Collider,
+    private level: Collider,
     private readonly fx: Effects,
     private readonly sound: (name: SfxName) => void = () => {},
   ) {
     this.respawn();
   }
 
+  /** Moves Iris into another room (the scene converts her position). */
+  setCollider(level: Collider): void {
+    this.level = level;
+  }
+
+  /** Respawns at the room's default spawn. */
   respawn(): void {
-    const s = this.level.spawn;
-    this.x = s.x + 4;
-    this.y = s.y + 16 - HB_H;
+    this.respawnAt(this.level.spawn);
+  }
+
+  /** Respawns with her feet on `feet` (bottom-centre). */
+  respawnAt(feet: { x: number; y: number }): void {
+    this.x = Math.round(feet.x - HB_W / 2);
+    this.y = Math.round(feet.y - HB_H);
     this.vx = this.vy = this.remX = this.remY = 0;
     this.facing = 1;
     this.dead = false;
@@ -176,6 +186,20 @@ export class Player {
 
   get hitbox(): Rect {
     return { x: this.x, y: this.y, w: HB_W, h: HB_H };
+  }
+
+  /** Gives the dash and double jump back (checkpoints, refills). */
+  refill(): void {
+    if (!this.canDash) this.fx.burst(this.x + HB_W / 2, this.y + 4, 6, { colors: [COLORS.P, COLORS.q], speed: 35, life: 0.3 });
+    this.canDash = true;
+    this.canDoubleJump = true;
+  }
+
+  /** Shifts Iris by a vector (room transitions), keeping her momentum. */
+  shift(dx: number, dy: number): void {
+    this.x += dx;
+    this.y += dy;
+    this.scarf.shift(dx, dy);
   }
 
   get dashing(): boolean {
