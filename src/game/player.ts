@@ -2,8 +2,9 @@ import { COLORS, manifest } from "../config";
 import type { SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
-import type { Level, Rect } from "./level";
+import type { Rect } from "./level";
 import type { Effects } from "./particles";
+import type { Collider } from "./room";
 import { Scarf } from "./scarf";
 
 /**
@@ -61,7 +62,22 @@ export const TUNING = {
   wallCheck: 2, // px: how close to a wall counts as touching it
 
   platformDropTime: 0.2,
+  voidGrace: 0.5, // seconds of falling below the room before death: time to rewind
 };
+
+/** Everything needed to put Iris back exactly where she was (used by the rewind). */
+export interface PlayerSnapshot {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  remX: number;
+  remY: number;
+  facing: 1 | -1;
+  canDash: boolean;
+  canDoubleJump: boolean;
+  frame: number;
+}
 
 const ANIM = manifest.player.animations;
 const RUN_STRIDE = 7; // px travelled per run frame (keeps the legs in sync with speed)
@@ -96,6 +112,10 @@ export class Player {
   dead = false;
   /** Seconds of hit-stop requested (read & cleared by the scene). */
   freeze = 0;
+  /** Seconds spent below the room (the void). Death when it reaches TUNING.voidGrace. */
+  voidTime = 0;
+  /** Eye glow after a rewind (0..1). */
+  power = 0;
 
   private remX = 0;
   private remY = 0;
@@ -124,7 +144,7 @@ export class Player {
   private readonly scarf = new Scarf();
 
   constructor(
-    private readonly level: Level,
+    private readonly level: Collider,
     private readonly fx: Effects,
     private readonly sound: (name: SfxName) => void = () => {},
   ) {
@@ -142,6 +162,8 @@ export class Player {
     this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
     this.wallSliding = false;
     this.wallCoyote = this.forceMoveTimer = 0;
+    this.voidTime = 0;
+    this.power = 0;
     this.scaleX = 0.6; // pop in
     this.scaleY = 1.4;
     const a = this.scarfWorldAnchor();
@@ -170,6 +192,7 @@ export class Player {
     let mx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
     const my = (input.isDown("down") ? 1 : 0) - (input.isDown("up") ? 1 : 0);
     this.animTime += dt;
+    this.power = Math.max(0, this.power - dt * 2);
 
     this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     this.dropTimer = Math.max(0, this.dropTimer - dt);
@@ -221,7 +244,8 @@ export class Player {
     this.scarf.update(dt, a.x, a.y, this.facing, Math.hypot(this.vx, this.vy));
 
     // ---- death
-    if (this.level.hazardAt(this.hitbox) || this.y > this.level.height + 24) this.die();
+    if (this.y > this.level.height + 4) this.voidTime += dt;
+    if (this.level.hazardAt(this.hitbox) || this.voidTime >= TUNING.voidGrace) this.die();
   }
 
   private updateRun(dt: number, mx: number): void {
@@ -345,6 +369,46 @@ export class Player {
     }
     const maxFall = my > 0 ? T.fastFall : T.maxFall;
     this.vy = approach(this.vy, maxFall, g * dt);
+  }
+
+  snapshot(): PlayerSnapshot {
+    return {
+      x: this.x,
+      y: this.y,
+      vx: this.vx,
+      vy: this.vy,
+      remX: this.remX,
+      remY: this.remY,
+      facing: this.facing,
+      canDash: this.canDash,
+      canDoubleJump: this.canDoubleJump,
+      frame: this.frame(),
+    };
+  }
+
+  /** Puts Iris back into a recorded moment (position, momentum and resources). */
+  restore(s: PlayerSnapshot): void {
+    this.x = s.x;
+    this.y = s.y;
+    this.vx = s.vx;
+    this.vy = s.vy;
+    this.remX = s.remX;
+    this.remY = s.remY;
+    this.facing = s.facing;
+    this.canDash = s.canDash;
+    this.canDoubleJump = s.canDoubleJump;
+    this.dashTimer = this.varJumpTimer = this.buffer = this.forceMoveTimer = this.wallCoyote = 0;
+    this.wallSliding = false;
+    this.voidTime = 0;
+    this.power = 1;
+    this.stretch(0.7, 1.35);
+    const a = this.scarfWorldAnchor();
+    this.scarf.reset(a.x, a.y, this.facing);
+  }
+
+  /** Current sprite frame and where it is drawn (to freeze an echo in this exact pose). */
+  get pose(): { frame: number; facing: 1 | -1; spriteX: number; spriteY: number } {
+    return { frame: this.frame(), facing: this.facing, spriteX: this.x + SPRITE_OX, spriteY: this.y + SPRITE_OY };
   }
 
   private startDash(mx: number, my: number): void {
@@ -569,7 +633,8 @@ export class Player {
     // row 0 = rose collar (dash ready), row 1 = grey collar (dash spent)
     draw.frame(draw.img.player, this.frame(), this.x + SPRITE_OX - camX, this.y + SPRITE_OY - camY, {
       flip: this.facing < 0,
-      row: this.canDash ? 0 : 1,
+      // row 0 = rose collar, 1 = grey collar (dash spent), 2 = glowing Eye (just rewound)
+      row: this.power > 0.3 ? 2 : this.canDash ? 0 : 1,
       sx: this.scaleX,
       sy: this.scaleY,
     });

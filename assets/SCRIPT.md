@@ -171,7 +171,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 
 **Unlock order:** run, jump, double jump and wall jump from the start (wall jump taught in 0-6, The Broken Mill's chimney). **Dash** at the end of chapter 0 (the first Bell shard). **Rewind** in chapter 2 (the Eye awakens).
 
-### 4.2 Rewind & echoes
+### 4.2 Rewind & echoes ✅ (core implemented: recording, reverse playback, solid echoes, echo limit, void grace, plates & doors)
 1. The game always records Iris's last **2 seconds** (position, velocity, pose, dash and double-jump state).
 2. **Rewind** snaps her back to her state 2 s ago, with a short cyan whoosh, screen ripple and reversed afterimage trail.
 3. A **frozen echo** appears where she rewound *from*, in the exact pose she had.
@@ -942,7 +942,7 @@ THANKS FOR PLAYING
 | Move | W A S D (Z Q S D on AZERTY) / arrows ✅ | Left stick / D-pad | Down = fast fall, down + jump = drop through |
 | Jump / double jump | Space ✅ | A | Also confirms in menus |
 | Dash | Left Shift ✅ | X | 8 directions |
-| Rewind | R | RB | Planned (chapter 2) |
+| Rewind | R ✅ | RB | Rewinds 2 s and leaves a solid echo |
 | Talk | Up | Up | Near an NPC |
 | Pause | Esc ✅ | Start | Also "back" in menus |
 | Map | M | Select | Planned. World / chapter map, fast travel at shrines |

@@ -6,11 +6,13 @@ import type { Draw } from "../engine/draw";
  *   #  solid ground
  *   -  one-way platform (solid from above only)
  *   ^  spikes
+ *   b  pressure plate (held down by Iris or an echo standing on it)
+ *   D  door (solid while closed; stack two for a 2-tile door). Doors open while any plate is held
  *   P  player spawn
  *   .  empty
  * Outside the room, left/right/top count as walls; below the bottom is the void.
  */
-export type Tile = "#" | "-" | "^" | ".";
+export type Tile = "#" | "-" | "^" | "b" | "D" | ".";
 
 export interface Rect {
   x: number;
@@ -19,12 +21,22 @@ export interface Rect {
   h: number;
 }
 
+export function overlaps(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
 export class Level {
   readonly cols: number;
   readonly rows: number;
   readonly width: number;
   readonly height: number;
   readonly spawn: { x: number; y: number };
+  /** Trigger zones of the pressure plates (the lower part of their tile). */
+  readonly plates: Rect[] = [];
+  /** Door tiles, as rects. */
+  readonly doors: Rect[] = [];
+  doorsOpen = false;
+  platesPressed: boolean[] = [];
   private readonly tiles: Tile[][];
 
   constructor(map: string[]) {
@@ -40,9 +52,12 @@ export class Level {
           spawn = { x: tx * TILE, y: ty * TILE };
           return ".";
         }
+        if (ch === "b") this.plates.push({ x: tx * TILE + 1, y: ty * TILE + 10, w: TILE - 2, h: 6 });
+        if (ch === "D") this.doors.push({ x: tx * TILE, y: ty * TILE, w: TILE, h: TILE });
         return ch as Tile;
       });
     });
+    this.platesPressed = this.plates.map(() => false);
     this.spawn = spawn;
   }
 
@@ -62,7 +77,7 @@ export class Level {
   }
 
   solidAt(r: Rect): boolean {
-    return this.overlapping(r, (t) => t === "#");
+    return this.overlapping(r, (t) => t === "#" || (t === "D" && !this.doorsOpen));
   }
 
   /** True if a rect whose bottom edge is at `bottom` stands exactly on a one-way platform. */
@@ -92,16 +107,21 @@ export class Level {
   render(draw: Draw, camX: number, camY: number, viewW: number, viewH: number): void {
     const x0 = Math.max(0, Math.floor(camX / TILE));
     const x1 = Math.min(this.cols - 1, Math.floor((camX + viewW) / TILE));
-    const y0 = Math.max(0, Math.floor(camY / TILE));
+    const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
     const y1 = Math.min(this.rows - 1, Math.floor((camY + viewH) / TILE));
-    for (let ty = y0; ty <= y1; ty++) {
-      for (let tx = x0; tx <= x1; tx++) {
+    let plate = 0;
+    for (let ty = 0; ty < this.rows; ty++) {
+      for (let tx = 0; tx < this.cols; tx++) {
         const t = this.tiles[ty][tx];
+        if (t === "b") plate++;
+        if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue;
         const sx = tx * TILE - camX;
         const sy = ty * TILE - camY;
         if (t === "#") draw.frame(draw.img.tiles, this.mask(tx, ty), sx, sy);
         else if (t === "^") draw.frame(draw.img.props, 0, sx, sy);
         else if (t === "-") draw.frame(draw.img.props, 5, sx, sy);
+        else if (t === "b") draw.frame(draw.img.props, this.platesPressed[plate - 1] ? 2 : 1, sx, sy);
+        else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
       }
     }
   }

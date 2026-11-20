@@ -30,6 +30,7 @@ npm run sprites    # regenerate placeholder sprites (python3, no deps)
 | Jump / double jump | Space |
 | Dash (8 directions) | Left Shift |
 | Wall slide / wall jump | Push into a wall / Jump against a wall |
+| Rewind (leave a solid echo) | R |
 | Fast fall / drop through platform | Down / Down + Jump |
 | Pause | Esc |
 | Debug overlay | F3 |
