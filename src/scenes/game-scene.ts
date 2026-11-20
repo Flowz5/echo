@@ -70,6 +70,8 @@ export class GameScene implements Scene {
   private readonly fx = new Effects();
   private readonly player: Player;
   private respawnPoint: Point;
+  /** last crystal / shrine touched in each room: where Iris comes back when she returns there */
+  private readonly lastCheckpoint = new Map<string, Point>();
   private camX = 0;
   private camY = 0;
   private lookAhead = 0;
@@ -124,6 +126,7 @@ export class GameScene implements Scene {
   /** A fresh run from the first room: checkpoints forgotten. */
   private startRun(): void {
     for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
+    this.lastCheckpoint.clear();
     this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
     this.banner = this.popup = null;
     this.setRoom(this.world.startRoom);
@@ -268,8 +271,8 @@ export class GameScene implements Scene {
     this.setRoom(next);
 
     // respawn: an active checkpoint in this room, else the spawn nearest to where Iris came in
-    const active = next.level.checkpoints.find((c) => c.active);
-    this.respawnPoint = active ?? next.level.nearestSpawn({ x: p.x + 4, y: p.y + 12 });
+    // respawn: the last crystal touched in this room, else the spawn nearest to where Iris came in
+    this.respawnPoint = this.lastCheckpoint.get(next.name) ?? next.level.nearestSpawn({ x: p.x + 4, y: p.y + 12 });
     this.focusY = p.y;
     return true;
   }
@@ -284,17 +287,21 @@ export class GameScene implements Scene {
     if (tr.t >= 1) this.transition = null;
   }
 
-  /** Touching a crystal makes it the respawn point and refills the dash and double jump. */
+  /**
+   * Touching a crystal lights it for good, makes it the respawn point (also when coming
+   * back to this room later) and refills the dash and double jump.
+   */
   private checkCheckpoints(): void {
     const p = this.player;
     for (const c of this.level.checkpoints) {
       if (!overlaps(p.hitbox, Level.checkpointRect(c))) continue;
       p.refill();
       this.securePending();
-      if (c.active) continue;
-      for (const r of this.world.rooms) for (const other of r.level.checkpoints) other.active = false;
+      const point = { x: c.x, y: c.y };
+      this.respawnPoint = point;
+      this.lastCheckpoint.set(this.current.name, point);
+      if (c.active) continue; // already lit: just moves the respawn point here
       c.active = true;
-      this.respawnPoint = { x: c.x, y: c.y };
       this.ctx.sfx("checkpoint");
       this.fx.burst(c.x, c.y - 9, 18, { colors: [COLORS.C, COLORS.e, COLORS.E, COLORS.W], speed: 60, life: 0.6 });
     }
@@ -459,6 +466,7 @@ export class GameScene implements Scene {
     this.renderDecor("back", camX, camY);
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
     this.renderDecor("mid", camX, camY);
+    this.level.renderCheckpoints(draw, camX, camY);
     this.renderEntities(camX, camY);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
     this.fx.renderBehind(draw, camX, camY);

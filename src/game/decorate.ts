@@ -24,6 +24,13 @@ const isAir = (t: Tile) => t === ".";
 export function decorate(level: Level, indoor: boolean): Decor[] {
   const out: Decor[] = [];
   const seed = seedOf(level.name);
+  // keep the ground clear around checkpoints, collectibles, NPCs and spawns
+  const busy = new Set<string>();
+  for (const p of [...level.checkpoints, ...level.entities, ...level.spawns]) {
+    const tx = Math.floor(p.x / TILE);
+    const ty = Math.floor((p.y - 1) / TILE) + 1; // the ground tile under the point
+    for (const dx of [-1, 0, 1]) busy.add(`${tx + dx},${ty}`);
+  }
   for (let ty = 0; ty < level.rows; ty++) {
     for (let tx = 0; tx < level.cols; tx++) {
       const t = level.ownTile(tx, ty);
@@ -32,14 +39,14 @@ export function decorate(level: Level, indoor: boolean): Decor[] {
       const x = tx * TILE + 2 + Math.floor(r2 * 12);
       const top = ty * TILE;
 
-      if (isSolid(t) && ty > 0 && isAir(level.tile(tx, ty - 1))) {
+      if (isSolid(t) && ty > 0 && isAir(level.tile(tx, ty - 1)) && !busy.has(`${tx},${ty}`)) {
         // a ground top
         if (!indoor) {
           if (r < 0.42) out.push({ sprite: `grass${Math.floor(r2 * 3)}`, x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
           else if (r < 0.5) out.push({ sprite: ["flower_rose", "flower_bone", "flower_lilac"][Math.floor(r2 * 3)], x, y: top + 1, layer: "mid", flip: false });
           else if (r < 0.55) out.push({ sprite: "rock_s", x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
           else if (r < 0.58) out.push({ sprite: "mushroom", x, y: top + 1, layer: "mid", flip: false });
-          else if (r < 0.6 && isSolid(level.tile(tx + 1, ty))) out.push({ sprite: "rock_m", x: tx * TILE + 16, y: top + 1, layer: "mid", flip: r2 > 0.5 });
+          else if (r < 0.6 && isSolid(level.tile(tx + 1, ty)) && isAir(level.tile(tx + 1, ty - 1))) out.push({ sprite: "rock_m", x: tx * TILE + 16, y: top + 1, layer: "mid", flip: r2 > 0.5 });
           // now and then a tuft in front of Iris, for depth
           if (hash(tx, ty, seed + 2) < 0.07) out.push({ sprite: `grass${Math.floor(r * 3)}`, x: tx * TILE + 8, y: top + 3, layer: "front", flip: true });
         } else {

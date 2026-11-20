@@ -200,6 +200,10 @@ export class Level {
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
       }
     }
+  }
+
+  /** Crystals and shrines: drawn after the decorations so nothing hides them. */
+  renderCheckpoints(draw: Draw, camX: number, camY: number): void {
     for (const c of this.checkpoints) {
       if (c.kind === "shrine") draw.frame(draw.img.shrine, 0, c.x - 8 - camX, c.y - 32 - camY, { fh: 32 });
       else draw.frame(draw.img.props, c.active ? 4 : 3, c.x - 8 - camX, c.y - 16 - camY);

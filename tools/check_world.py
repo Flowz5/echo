@@ -16,6 +16,73 @@ TILE = 16
 SOLID = {1, 5}          # ground, door (closed)
 STANDABLE = {1, 2, 5}   # + one-way platform
 GROUNDED = {"spawn", "checkpoint", "shrine", "npc", "lingering"}
+HANGING = {"hanging_lantern", "vine", "vine_long", "cobweb", "stalactite"}
+SPRITES = json.load(open(os.path.join(LEVELS, "..", "sprites.json")))
+DECOR = SPRITES["decor"]["rects"]
+
+
+def prop(o, name, default=None):
+    for p in o.get("properties", []):
+        if p["name"] == name:
+            return p["value"]
+    return default
+
+
+def solid_at(room, tx, ty):
+    if 0 <= tx < room["w"] and 0 <= ty < room["h"]:
+        return tile(room, tx, ty) in SOLID
+    return False
+
+
+def supports(room, tx, ty):
+    return 0 <= tx < room["w"] and 0 <= ty < room["h"] and tile(room, tx, ty) in STANDABLE
+
+
+def object_rect(o):
+    """Screen-space rect of things a decoration must not hide."""
+    x, y = o["x"], o["y"]
+    if o["type"] == "shrine":
+        return (x - 8, y - 32, 16, 32)
+    if o["type"] in ("npc", "lingering"):
+        return (x - 6, y - 24, 12, 24)
+    return (x - 6, y - 16, 12, 16)
+
+
+def check_decor(r, problems):
+    targets = [o for o in r["objects"] if o["type"] in ("checkpoint", "shrine", "npc", "shard", "note", "page", "moment")]
+    for o in r["objects"]:
+        if o["type"] != "deco":
+            continue
+        name = prop(o, "sprite", "")
+        layer = prop(o, "layer", "mid")
+        size = DECOR.get(name) or DECOR.get(f"{name}_0")
+        label = f"{r['name']}: deco '{name}' at ({int(o['x'] // TILE)},{int(o['y'] // TILE) - 1})"
+        if not size:
+            problems.append(f"{label}: unknown sprite")
+            continue
+        w, h = size["w"], size["h"]
+        x0, x1 = o["x"] - w / 2 + 2, o["x"] + w / 2 - 2      # a little forgiveness on the edges
+        top, base = o["y"] - h, o["y"]
+        cols = range(int(x0 // TILE), int((x1 - 0.01) // TILE) + 1)
+        if name in HANGING:
+            if not solid_at(r, int(o["x"] // TILE), int((top - 1) // TILE)) and not supports(r, int(o["x"] // TILE), int((top - 1) // TILE)):
+                problems.append(f"{label}: hangs from nothing")
+            continue
+        under = int(base // TILE)
+        supported = [supports(r, c, under) for c in cols]
+        if layer == "back":
+            if sum(supported) < max(1, len(supported) * 0.6):
+                problems.append(f"{label}: floats (not enough ground under it)")
+        else:
+            if not all(supported):
+                problems.append(f"{label}: overhangs or floats")
+            body_rows = range(int(top // TILE), int((base - 1) // TILE) + 1)
+            if any(solid_at(r, c, row) for c in cols for row in body_rows):
+                problems.append(f"{label}: goes into a wall")
+            for t in targets:
+                tx, ty, tw, th = object_rect(t)
+                if x0 < tx + tw and tx < x1 and top < ty + th and ty < base:
+                    problems.append(f"{label}: hides a {t['type']}")
 
 
 def load(world):
@@ -83,6 +150,9 @@ def main(world):
                 problems.append(f"{label} is inside a wall")
             elif o["type"] in GROUNDED and below not in STANDABLE:
                 problems.append(f"{label} is floating (nothing to stand on)")
+
+    for r in rooms:
+        check_decor(r, problems)
 
     print(f"{world}: {len(rooms)} rooms")
     for n in notes:
