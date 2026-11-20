@@ -7,8 +7,10 @@ import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
 const RESPAWN_DELAY = 0.5;
-const CAMERA_LERP = 10; // higher = snappier
-const LOOK_AHEAD = 24; // px the camera leads in the facing direction
+const CAMERA_LERP_X = 7; // higher = snappier
+const CAMERA_LERP_Y = 4.5;
+const LOOK_AHEAD = 28; // max px the camera leads in the running direction
+const JUMP_WINDOW = 40; // px Iris can rise above her last footing before the camera follows up
 
 export class GameScene implements Scene {
   private level = new Level(TEST_ROOM);
@@ -17,6 +19,7 @@ export class GameScene implements Scene {
   private camX = 0;
   private camY = 0;
   private lookAhead = 0;
+  private focusY = 0; // vertical point the camera follows (last footing, or lower when falling)
   private freeze = 0;
   private shake = 0;
   private respawnTimer = 0;
@@ -112,7 +115,7 @@ export class GameScene implements Scene {
   private cameraTarget(): { x: number; y: number } {
     const p = this.player;
     const x = p.x + 4 - WIDTH / 2 + this.lookAhead;
-    const y = p.y + 6 - HEIGHT / 2 - 10;
+    const y = this.focusY + 6 - HEIGHT / 2 - 10;
     return {
       x: Math.max(0, Math.min(this.level.width - WIDTH, x)),
       y: Math.max(0, Math.min(this.level.height - HEIGHT, y)),
@@ -121,15 +124,20 @@ export class GameScene implements Scene {
 
   private updateCamera(dt: number): void {
     const p = this.player;
-    this.lookAhead += (p.facing * LOOK_AHEAD - this.lookAhead) * Math.min(1, dt * 2);
+    // lead in the direction of travel, proportional to speed
+    const lead = Math.max(-1, Math.min(1, p.vx / 100)) * LOOK_AHEAD;
+    this.lookAhead += (lead - this.lookAhead) * Math.min(1, dt * 2.5);
+    // don't bob with every jump: follow the footing, or Iris when she falls below it / climbs high
+    if (p.grounded || p.y > this.focusY) this.focusY = p.y;
+    else if (p.y < this.focusY - JUMP_WINDOW) this.focusY = p.y + JUMP_WINDOW;
     const target = this.cameraTarget();
-    const k = 1 - Math.exp(-dt * CAMERA_LERP);
-    this.camX += (target.x - this.camX) * k;
-    this.camY += (target.y - this.camY) * k;
+    this.camX += (target.x - this.camX) * (1 - Math.exp(-dt * CAMERA_LERP_X));
+    this.camY += (target.y - this.camY) * (1 - Math.exp(-dt * CAMERA_LERP_Y));
   }
 
   private snapCamera(): void {
-    this.lookAhead = LOOK_AHEAD * this.player.facing;
+    this.lookAhead = 0;
+    this.focusY = this.player.y;
     const t = this.cameraTarget();
     this.camX = t.x;
     this.camY = t.y;

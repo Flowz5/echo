@@ -1,5 +1,7 @@
 import { HEIGHT, TILE, WIDTH, manifest } from "../config";
 import type { Draw } from "../engine/draw";
+import { Scarf } from "../game/scarf";
+import { scarfAnchor } from "../game/player";
 
 const ANIM = manifest.player.animations;
 const SPEED = 42; // ground scroll, px/s
@@ -27,8 +29,17 @@ export class MenuBackground {
   private nextJump = 1.6;
   private nextEcho = 0.8;
   private echoes: FrozenEcho[] = [];
+  private readonly scarf = new Scarf();
 
-  constructor(private readonly draw: Draw) {}
+  constructor(private readonly draw: Draw) {
+    const a = this.anchor();
+    this.scarf.reset(a.x, a.y, 1);
+  }
+
+  private anchor(): { x: number; y: number } {
+    const a = scarfAnchor(this.irisFrame());
+    return { x: IRIS_X + a.x, y: this.irisY() + a.y };
+  }
 
   update(dt: number): void {
     this.t += dt;
@@ -54,6 +65,8 @@ export class MenuBackground {
       e.age += dt;
     }
     this.echoes = this.echoes.filter((e) => e.age < ECHO_LIFE && e.x > -16);
+    const a = this.anchor();
+    this.scarf.update(dt, a.x, a.y, 1, 100, -SPEED * 3);
   }
 
   private irisY(): number {
@@ -86,6 +99,7 @@ export class MenuBackground {
       const shimmer = 0.85 + 0.15 * Math.sin(this.t * 9 + e.x);
       draw.frame(img.echo, e.frame, e.x, e.y, { alpha: manifest.echo.drawAlpha * fade * shimmer });
     }
+    this.scarf.render(draw, 0, 0, false);
     draw.frame(img.player, this.irisFrame(), IRIS_X, this.irisY());
   }
 

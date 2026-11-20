@@ -156,16 +156,17 @@ HEAD = [
     "...KgWWWWWWgK...",
     "..KKKggggggKK...",
 ]
+# Only the collar is drawn: the scarf's tail is simulated in-game (src/game/scarf.ts)
 SCARF_A = [
-    ".KPPPPPPPPPPK...",
-    "KPqKPPPPPPPPK...",
-    "KPK.K344443K....",
-    ".K..K343343K....",
+    "...KqPPPPPPPK...",
+    "....KPPPPPPK....",
+    "....K344443K....",
+    "....K343343K....",
 ]
-SCARF_B = [  # flutter frame
-    ".KPPPPPPPPPPK...",
-    "KPPKPPPPPPPPK...",
-    ".KK.K344443K....",
+SCARF_B = [
+    "...KqPPPPPPPK...",
+    "....KPPPPPpK....",
+    "....K344443K....",
     "....K343343K....",
 ]
 LEGS = {
@@ -176,14 +177,7 @@ LEGS = {
     "tuck": ["....K333333K....", "....KK3333KK....", ".....KKKKKK....."],
     "dangle": ["....K333333K....", "....K3K..K3K....", "....KK....KK...."],
 }
-FALL_TOP = HEAD[:7] + [
-    ".KPKgWWWWWWgK...",
-    ".KPKKggggggKK...",
-    ".KPPPPPPPPPPK...",
-    "..KKPPPPPPPPK...",
-    "....K344443K....",
-    "....K343343K....",
-]
+FALL_TOP = HEAD + SCARF_A
 DASH = [
     "................",
     "................",
@@ -193,9 +187,9 @@ DASH = [
     "....KWWWWWWEeK..",
     "....KWWWWWWeEK..",
     "....KgWWWWWWgK..",
-    "KKKKKKggggggKK..",
-    "PPPPPPPPPPPPPK..",
-    "KKqqKKPPPPPPK...",
+    ".....KggggggKK..",
+    "....KqPPPPPPPK..",
+    ".....KPPPPPPK...",
     ".....K344443K...",
     ".....K343343K...",
     "....K333333K....",

@@ -70,7 +70,7 @@ export class Draw {
     index: number,
     x: number,
     y: number,
-    opts: { fw?: number; fh?: number; row?: number; flip?: boolean; alpha?: number } = {},
+    opts: { fw?: number; fh?: number; row?: number; flip?: boolean; alpha?: number; sx?: number; sy?: number } = {},
   ): void {
     const fw = opts.fw ?? 16;
     const fh = opts.fh ?? 16;
@@ -79,7 +79,22 @@ export class Draw {
     const dy = Math.round(y);
     ctx.save();
     if (opts.alpha !== undefined) ctx.globalAlpha = opts.alpha;
-    if (opts.flip) {
+    const sx = opts.sx ?? 1;
+    const sy = opts.sy ?? 1;
+    if (sx !== 1 || sy !== 1) {
+      // squash & stretch, anchored at the feet (bottom centre)
+      const w = Math.round(fw * sx);
+      const h = Math.round(fh * sy);
+      const ox = dx + Math.round((fw - w) / 2);
+      const oy = dy + fh - h;
+      if (opts.flip) {
+        ctx.translate(ox + w, oy);
+        ctx.scale(-1, 1);
+        ctx.drawImage(image, index * fw, (opts.row ?? 0) * fh, fw, fh, 0, 0, w, h);
+      } else {
+        ctx.drawImage(image, index * fw, (opts.row ?? 0) * fh, fw, fh, ox, oy, w, h);
+      }
+    } else if (opts.flip) {
       ctx.translate(dx + fw, dy);
       ctx.scale(-1, 1);
       ctx.drawImage(image, index * fw, (opts.row ?? 0) * fh, fw, fh, 0, 0, fw, fh);
