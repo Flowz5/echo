@@ -1,0 +1,30 @@
+GIMP Palette
+Name: Echo
+Columns: 8
+#
+ 13  11  30	Void
+ 22  20  51	Night 1
+ 31  29  74	Night 2
+ 43  42  99	Night 3
+ 60  59 128	Night 4
+ 78  58 122	Dusk violet
+107  76 154	Lilac
+156  90 156	Mauve
+216 116 155	Rose
+242 163 163	Blush
+244 241 232	Bone
+138 138 168	Ash
+ 90  90 122	Slate
+ 27 111 138	Echo deep
+ 43 181 201	Echo
+111 242 242	Echo light
+212 255 255	Echo flash
+138  75  31	Amber deep
+217 130  43	Amber
+255 194  77	Gold
+255 240 168	Pale gold
+143  35  64	Danger deep
+217  65  94	Danger
+ 31  74  74	Moss deep
+ 47 122 106	Moss
+ 95 176 138	Moss light
