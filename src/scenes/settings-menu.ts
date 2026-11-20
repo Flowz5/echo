@@ -58,6 +58,8 @@ export class SettingsMenu extends PanelScreen {
   enter(from: Parameters<PanelScreen["enter"]>[0]): void {
     // coming back from the controls screen keeps the cursor on CONTROLS
     if (from === "controls") return;
+    // opened from the main menu or the pause menu: return there
+    if (from === "main" || from === "game") this.backTo = from;
     super.enter(from);
   }
 }

@@ -22,7 +22,18 @@ npm run sprites    # regenerate placeholder sprites (python3, no deps)
 | Change value | Left / Right |
 | Back | Esc / Backspace |
 
-Gameplay keys (jump, dash, rewind, pause) can be rebound in **Settings → Controls**.
+## Controls (game)
+
+| Action | Default |
+|---|---|
+| Move | WASD (ZQSD on AZERTY) / arrows |
+| Jump / double jump | Space |
+| Dash (8 directions) | Left Shift |
+| Fast fall / drop through platform | Down / Down + Jump |
+| Pause | Esc |
+| Debug overlay | F3 |
+
+Every key can be rebound in **Settings → Controls**. Movement tuning lives in `TUNING` at the top of `src/game/player.ts`.
 
 ## Project layout
 
@@ -31,7 +42,8 @@ assets/        art bible (SCRIPT.md), palette, sprites, UI, backgrounds
 public/        favicon
 src/
   engine/      renderer (320x180, integer scaling), fixed-step loop, input, assets, drawing, audio
-  scenes/      main menu, settings, controls, credits, game placeholder
+  game/        level (tiles, collisions), player movement, particles, rooms
+  scenes/      main menu, settings, controls, credits, game (camera, pause)
   ui/          reusable option list (keyboard + mouse)
   settings.ts  persisted settings (localStorage)
 tools/         sprite generator

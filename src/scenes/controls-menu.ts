@@ -5,6 +5,10 @@ import { PanelScreen } from "./panel-screen";
 import type { Ctx } from "./scene";
 
 const ACTIONS: { action: Bindable; label: string }[] = [
+  { action: "up", label: "UP" },
+  { action: "down", label: "DOWN" },
+  { action: "left", label: "LEFT" },
+  { action: "right", label: "RIGHT" },
   { action: "jump", label: "JUMP" },
   { action: "dash", label: "DASH" },
   { action: "rewind", label: "REWIND" },
@@ -18,7 +22,12 @@ export class ControlsMenu extends PanelScreen {
     const items: Option[] = ACTIONS.map(({ action, label }) => ({
       kind: "action" as const,
       label,
-      value: () => (this.waiting === action ? (Math.sin(this.t * 8) > -0.3 ? "PRESS A KEY..." : "") : keyName(ctx.settings.bindings[action])),
+      value: () =>
+        this.waiting === action
+          ? Math.sin(this.t * 8) > -0.3
+            ? "PRESS A KEY..."
+            : ""
+          : keyName(ctx.settings.bindings[action]),
       run: () => this.listen(action),
     }));
     items.push(
@@ -32,7 +41,7 @@ export class ControlsMenu extends PanelScreen {
       },
       { kind: "action", label: "BACK", run: () => this.back() },
     );
-    super(ctx, "CONTROLS", items);
+    super(ctx, "CONTROLS", items, { rowH: 12 });
     this.backTo = "settings";
   }
 
@@ -56,6 +65,6 @@ export class ControlsMenu extends PanelScreen {
   }
 
   protected hint(): string {
-    return this.waiting ? "ESC CANCEL" : "MOVE: ARROWS / WASD   ESC BACK";
+    return this.waiting ? "ESC CANCEL" : "ARROW KEYS ALWAYS WORK TOO   ESC BACK";
   }
 }

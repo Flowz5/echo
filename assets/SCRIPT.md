@@ -32,12 +32,14 @@ Quiet, melancholic, a little hopeful. Starry nights, soft moss, cold ruins. The 
 
 | Action | Default key (keyboard) | Gamepad | Notes |
 |---|---|---|---|
-| Move | ← → / A D | Left stick / D-pad | Fast acceleration, short skid |
-| Jump | Space / C | A | Variable height, coyote time, jump buffer |
+| Move | W A S D (Z Q S D on AZERTY) / arrows | Left stick / D-pad | Fast acceleration, short skid. Down = fast fall, down + jump drops through platforms |
+| Jump | Space | A | Variable height, coyote time, jump buffer |
 | Double jump | Jump in mid-air | A | Refreshed on landing (or on touching an echo) |
-| Dash | Shift / X | X | 8 directions, short, refreshed on landing |
-| Rewind | R / Z | RB | Pull back in time and leave an echo |
+| Dash | Left Shift | X | 8 directions, short, refreshed on landing |
+| Rewind | R | RB | Pull back in time and leave an echo |
 | Pause | Esc | Start | |
+
+Every key can be rebound in **Settings → Controls**. Bindings use physical key positions, so the default WASD is ZQSD on an AZERTY keyboard, and the menu shows the label printed on *your* keyboard. Arrow keys always work for movement and menus.
 
 ### Rewind & echoes (the heart of the game)
 1. The game constantly records Iris's last **2 seconds** of movement.
@@ -181,8 +183,12 @@ Settings are saved locally.
 ### Controls
 ```
 CONTROLS
+  UP                W
+  DOWN              S
+  LEFT              A
+  RIGHT             D
   JUMP              SPACE
-  DASH              SHIFT
+  DASH              L-SHIFT
   REWIND            R
   PAUSE             ESC
   RESET TO DEFAULT
