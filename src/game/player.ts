@@ -41,8 +41,8 @@ export const TUNING = {
   cornerCorrection: 4,
 
   // dashing
-  dashSpeed: 265,
-  dashTime: 0.15,
+  dashSpeed: 285,
+  dashTime: 0.175, // ≈ 2.7 tiles from a standstill, plus the momentum kept afterwards
   dashEase: 0.4, // the dash slows down by this fraction towards its end
   dashEndSpeed: 130, // horizontal speed kept after a dash (momentum)
   dashUpEndSpeed: 110, // upward speed kept after an upward dash
