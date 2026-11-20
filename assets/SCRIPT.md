@@ -163,11 +163,13 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 | Jump | ~2.5 tiles. Variable height (release early = short hop), coyote time 0.1 s, jump buffer 0.12 s, floatier apex while holding jump |
 | Double jump | One per airtime, refreshed on landing (and on standing on an echo) |
 | Dash | 8 directions, 0.14 s, tiny hit-stop, afterimages. Refreshed on landing. Scarf turns grey while spent |
+| Wall slide ✅ | Push against a wall while falling: Iris grabs it and slides at a slow, constant speed. Sliding gives the double jump back |
+| Wall jump ✅ | Jump while touching (or just after leaving) a wall. Pushing away = a long kick across; neutral = a short kick to climb the same wall. The kick briefly overrides the stick so Iris doesn't re-grab instantly |
 | Fast fall | Hold down |
 | Drop through | Down + jump on a one-way platform |
 | Corner correction | Bumping a ceiling corner by ≤ 4 px nudges Iris around it |
 
-**Unlock order:** run, jump and double jump from the start. **Dash** at the end of chapter 0 (the first Bell shard). **Rewind** in chapter 2 (the Eye awakens).
+**Unlock order:** run, jump, double jump and wall jump from the start (wall jump taught in 0-6, The Broken Mill's chimney). **Dash** at the end of chapter 0 (the first Bell shard). **Rewind** in chapter 2 (the Eye awakens).
 
 ### 4.2 Rewind & echoes
 1. The game always records Iris's last **2 seconds** (position, velocity, pose, dash and double-jump state).

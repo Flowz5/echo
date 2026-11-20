@@ -197,6 +197,17 @@ DASH = [
     "...KK......KK...",
 ]
 
+# sliding down a wall on the right: hand on the wall, legs tucked
+WALL = HEAD + [
+    "...KqPPPPPPPK...",
+    "....KPPPPPPKWK..",
+    "....K344443K....",
+    "....K343343K....",
+    "....K333333K....",
+    ".....KK3KK3K....",
+    "......KK.KK.....",
+]
+
 idle0 = HEAD + SCARF_A + LEGS["stand"]
 idle1 = ["................"] + HEAD + SCARF_A[:2] + [SCARF_A[3]] + LEGS["stand"]
 PLAYER_FRAMES = {
@@ -210,6 +221,7 @@ PLAYER_FRAMES = {
     "jump": [HEAD + SCARF_A + LEGS["tuck"]],
     "fall": [FALL_TOP + LEGS["dangle"]],
     "dash": [DASH],
+    "wall": [WALL],
 }
 ORDER = [(name, i) for name in PLAYER_FRAMES for i in range(len(PLAYER_FRAMES[name]))]
 for name, frames in PLAYER_FRAMES.items():
@@ -797,7 +809,7 @@ if __name__ == "__main__":
             "file": "sprites/player.png", "frame": [16, 16],
             "rows": {"normal": 0, "spent": 1, "power": 2},
             "animations": anims,
-            "fps": {"idle": 2, "run": 10, "jump": 1, "fall": 1, "dash": 1},
+            "fps": {"idle": 2, "run": 10, "jump": 1, "fall": 1, "dash": 1, "wall": 1},
         },
         "echo": {"file": "sprites/echo.png", "frame": [16, 16], "animations": anims, "drawAlpha": 0.65},
         "tiles": {
