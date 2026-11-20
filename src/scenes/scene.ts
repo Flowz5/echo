@@ -1,4 +1,5 @@
 import { C, HEIGHT, WIDTH } from "../config";
+import type { AudioEngine, SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
 import type { Renderer } from "../engine/renderer";
@@ -6,7 +7,6 @@ import type { Settings } from "../settings";
 import type { MenuBackground } from "./menu-background";
 
 export type ScreenName = "main" | "settings" | "controls" | "credits" | "game";
-export type Sfx = "move" | "select" | "back" | "toggle";
 
 /** Everything a scene needs, shared by all scenes. */
 export interface Ctx {
@@ -16,8 +16,9 @@ export interface Ctx {
   settings: Settings;
   scenes: SceneManager;
   bg: MenuBackground;
+  audio: AudioEngine;
   save(): void;
-  sfx(kind: Sfx): void;
+  sfx(name: SfxName): void;
 }
 
 export interface Scene {

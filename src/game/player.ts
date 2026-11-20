@@ -1,4 +1,5 @@
 import { COLORS, manifest } from "../config";
+import type { SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
 import type { Level, Rect } from "./level";
@@ -83,6 +84,7 @@ export class Player {
   constructor(
     private readonly level: Level,
     private readonly fx: Effects,
+    private readonly sound: (name: SfxName) => void = () => {},
   ) {
     this.respawn();
   }
@@ -165,9 +167,11 @@ export class Player {
         } else if (this.coyote > 0) {
           this.jump(T.jumpSpeed);
           this.dust(6);
+          this.sound("jump");
         } else if (this.canDoubleJump) {
           this.canDoubleJump = false;
           this.jump(T.doubleJumpSpeed);
+          this.sound("doubleJump");
           this.fx.burst(this.x + HB_W / 2, this.y + HB_H, 8, { colors: [COLORS.P, COLORS.q, COLORS.W], speed: 60, angle: Math.PI / 2, spread: Math.PI * 0.9, life: 0.3 });
         }
       }
@@ -188,7 +192,10 @@ export class Player {
     this.moveX(this.vx * dt);
     this.moveY(this.vy * dt);
 
-    if (!wasGrounded && this.onGround() && landingSpeed > 120) this.dust(Math.round(landingSpeed / 40));
+    if (!wasGrounded && this.onGround() && landingSpeed > 120) {
+      this.dust(Math.round(landingSpeed / 40));
+      this.sound("land");
+    }
 
     // ---- death
     if (this.level.hazardAt(this.hitbox) || this.y > this.level.height + 24) this.die();
@@ -208,6 +215,7 @@ export class Player {
     this.dashCooldown = T.dashCooldown;
     this.canDash = false;
     this.freeze = T.dashFreeze;
+    this.sound("dash");
     this.afterimageTimer = 0;
     this.buffer = 0;
     if (dx !== 0) this.facing = Math.sign(dx) as 1 | -1;
@@ -230,6 +238,7 @@ export class Player {
 
   private die(): void {
     this.dead = true;
+    this.sound("death");
     this.fx.burst(this.x + HB_W / 2, this.y + HB_H / 2, 24, {
       colors: [COLORS.W, COLORS.P, COLORS.q, COLORS.C],
       speed: 120,

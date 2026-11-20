@@ -44,9 +44,12 @@ src/
   engine/      renderer (320x180, integer scaling), fixed-step loop, input, assets, drawing, audio
   game/        level (tiles, collisions), player movement, particles, rooms
   scenes/      main menu, settings, controls, credits, game (camera, pause)
+  audio/       chiptune synth, music sequencer and the original tracks
   ui/          reusable option list (keyboard + mouse)
   settings.ts  persisted settings (localStorage)
 tools/         sprite generator
 ```
+
+Music is composed in code (`src/audio/tracks.ts`) and played by a tiny Web Audio sequencer; no audio files.
 
 See [`assets/SCRIPT.md`](assets/SCRIPT.md) for the story, mechanics and art direction.

@@ -13,7 +13,7 @@ const LOOK_AHEAD = 24; // px the camera leads in the facing direction
 export class GameScene implements Scene {
   private level = new Level(TEST_ROOM);
   private readonly fx = new Effects();
-  private player = new Player(this.level, this.fx);
+  private readonly player: Player;
   private camX = 0;
   private camY = 0;
   private lookAhead = 0;
@@ -26,10 +26,11 @@ export class GameScene implements Scene {
   private readonly pauseMenu: OptionList;
 
   constructor(private readonly ctx: Ctx) {
+    this.player = new Player(this.level, this.fx, (name) => ctx.sfx(name));
     this.pauseMenu = new OptionList(
       ctx,
       [
-        { kind: "action", label: "RESUME", run: () => (this.paused = false) },
+        { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
         { kind: "action", label: "RESTART ROOM", run: () => this.restart() },
         { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
         { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
@@ -40,11 +41,17 @@ export class GameScene implements Scene {
 
   enter(from: ScreenName | null): void {
     if (from === "settings") return; // back from the pause menu's settings: keep the run
+    this.ctx.audio.playMusic("vale");
     this.restart();
   }
 
+  private setPaused(paused: boolean): void {
+    this.paused = paused;
+    this.ctx.audio.setDucked(paused);
+  }
+
   private restart(): void {
-    this.paused = false;
+    this.setPaused(false);
     this.fx.clear();
     this.player.respawn();
     this.respawnTimer = 0;
@@ -59,15 +66,15 @@ export class GameScene implements Scene {
     if (this.paused) {
       if (input.justPressed("back")) {
         this.ctx.sfx("back");
-        this.paused = false;
+        this.setPaused(false);
         return;
       }
       this.pauseMenu.update();
       return;
     }
     if (input.justPressed("pause")) {
-      this.ctx.sfx("select");
-      this.paused = true;
+      this.ctx.sfx("pause");
+      this.setPaused(true);
       this.pauseMenu.index = 0;
       return;
     }
@@ -92,6 +99,7 @@ export class GameScene implements Scene {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
         p.respawn();
+        this.ctx.sfx("respawn");
         this.fx.burst(p.x + 4, p.y + 6, 14, { colors: [C.echo, C.echoLight, C.bone], speed: 50, life: 0.4 });
       }
     }
