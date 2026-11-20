@@ -2,7 +2,7 @@
 
 > A fast, precise 2D platformer where you rewind time and use your own frozen echoes to survive.
 
-**Status:** living document, v0.2. Everything here is the target design; what is already implemented is marked ✅.
+**Status:** living document, v0.3. Everything here is the target design; what is already implemented is marked ✅.
 
 ---
 
@@ -41,7 +41,8 @@ In a valley stuck in a hundred-year night, a small wanderer with a single glowin
 | | |
 |---|---|
 | Main story | 5 chapters + prologue + epilogue, ~5–7 hours |
-| 100 % | ~12 hours (collectibles, Lumi's moments, Echo Trials) |
+| 100 % | ~12 hours (collectibles, side quests, Lumi's moments, Echo Trials) |
+| Structure | Linear story spine with a **connected world**: branching routes in every chapter, ability gates that send you back to earlier areas, NPC side quests and shrine-to-shrine fast travel |
 | Platforms | Web first, desktop build later |
 | Rating | Everyone. No gore: death is a burst of light, not violence |
 
@@ -193,7 +194,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 | Type | Look | Function |
 |---|---|---|
 | **Echo Crystal** | cyan crystal on a stone base, dim grey until touched ✅ sprite | Room checkpoint. On death, Iris respawns at the last touched crystal instantly. Touching one refills dash and double jump |
-| **Bell Shrine** | a small bronze bell in a moss-covered stone arch | Saves the game, heals the Stillness, Tamsin speaks through it. From chapter 3, fast travel between shrines and Lanternrest |
+| **Bell Shrine** | a small bronze bell in a moss-covered stone arch | Saves the game, heals the Stillness, Tamsin speaks through it. From chapter 1, fast travel between every visited shrine and Lanternrest (see 4.9) |
 | **Room start** | invisible | If no crystal was touched in a room, respawn at its entrance |
 
 - **Death** resets the current room: echoes, buttons, crumble blocks and enemies' positions. Everything since the last crystal is replayed.
@@ -251,6 +252,81 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 - **INVINCIBLE:** ON / OFF (spikes and void respawn you at the last safe spot)
 - **REWIND WINDOW:** 2 / 3 / 4 s
 
+### 4.9 Map & fast travel
+**Opening the map:** MAP key (default **M**, rebindable) or **PAUSE → MAP**.
+
+**Two zoom levels**
+- **World view:** the whole valley as a vertical cross-section, from Lanternrest at the bottom to the Belltower at the top. Each chapter shows its completion (shards, notes, pages, moments, quests).
+- **Chapter view:** a grid of rooms, one cell per screen, joined by their exits.
+
+**How the map fills in**
+1. Rooms appear as you **visit** them (filled cell).
+2. Talking to **Quill** in a chapter reveals the **outline** of every room of that chapter (empty cells), so you can see where you haven't been.
+3. **Lost Pages** given to Quill mark **secret rooms** with a "?".
+4. After the **Shard of Hours** (chapter 3), each room shows small dots for the collectibles still inside it.
+
+**Map icons**
+| Icon | Meaning |
+|---|---|
+| Bronze bell | Bell Shrine (fast travel point) |
+| Cyan diamond | Echo Crystal (checkpoint) |
+| Face | NPC (with a "!" when they have something new to say) |
+| Gold star | Side quest objective |
+| Lock + ability icon | A gate you can't pass yet (dash, rewind, 2 echoes, Hask's pickaxe, Pip's lantern…) |
+| Open lock | A gate you *can* pass now: the game's nudge to backtrack |
+| Shard / note / page / kite | Collectibles (once revealed) |
+| Iris's Eye | You are here |
+
+**Fast travel**
+- Unlocked at the **Ruins Shrine** (chapter 1), when Tamsin realises "the bells can carry *you* too, child".
+- Works from **any Bell Shrine** to **any visited shrine** or **Lanternrest**: open the map at a shrine, pick a bell, confirm.
+- Short transition: Iris rings the shrine bell, dissolves into cyan light, and reappears at the other shrine as the bell there answers.
+- Fast travel is never available mid-room or during chase sequences.
+- Every chapter has **3–4 shrines**, so no backtracking trip is longer than a couple of minutes.
+
+**Custom markers:** the player can place up to 8 pins on the map (UP/DOWN/LEFT/RIGHT to move the cursor, JUMP to place, DASH to remove) to remember things like "come back with 2 echoes".
+
+### 4.10 Exploration: branching paths & ability gates
+**Branching routes.** Every chapter (except the finale) splits into **two routes** after its first shrine and joins again before the chapter's shard:
+- one route leans on **platforming** (speed, precision, chases);
+- the other leans on **puzzles** (echo planning, plates and doors).
+
+Both get you to the end. Each hides **different collectibles, a different Lumi encounter angle and different NPC lines**, so the other route is worth a return trip via fast travel. The map shows both branches once Quill has revealed the outline.
+
+**Ability gates.** Some passages can only be opened by an ability earned later. They are visible from the start (shown on the map with a lock) to tease the return trip.
+
+| Gate | Looks like | Opened by | Earned in | Found in |
+|---|---|---|---|---|
+| Long gap | A gap too wide to jump, a dash flower missing | Dash | end of ch. 0 | ch. 0 |
+| Dark passage | Pitch-black tunnel, eyes blinking inside | Pip's lantern (Shard of Light) | end of ch. 1 | ch. 0, 1 |
+| Hanging switch | A switch over a bottomless pit | Rewind (leap of faith) | ch. 2 | ch. 0, 1 |
+| Twin plates | Two pressure plates, one door | 2 echoes | ch. 3 | ch. 1, 2 |
+| Cracked wall | Wall with glowing cracks | Hask's pickaxe (side quest) | ch. 2 → quest | ch. 0–3 |
+| Echo seal | Violet seal with three sockets | 3 echoes | ch. 4 | ch. 1–3 (post-game shortcuts) |
+
+Behind gates you'll find: Lost Pages, Resonant Notes, side-quest items, shortcuts between shrines and a few **"memory rooms"** (short silent lore scenes about the Tollers).
+
+### 4.11 Side quests & backtracking
+Side quests are given by NPCs, tracked in **PAUSE → JOURNAL** and marked on the map with a gold star. None is required for an ending except where noted.
+
+| Quest | Given by | What you do | Requires | Reward |
+|---|---|---|---|---|
+| **Starbloom Tea** | Moss (after ch. 1) | Pick a Starbloom from the rose garden's roof (ch. 1, high route) and bring it back to the teahouse before it wilts (60 s timer, fast travel allowed) | Dash | A Lost Page + Moss & Bramble's best secret hint |
+| **Hask's Lucky Pickaxe** | Hask (after ch. 2) | His pickaxe fell down the Well of Stars (ch. 0) during the Stilling. Climb down, then back up the well with echo steps | Rewind | Hask breaks every **cracked wall** in the valley (new paths in ch. 0–3) |
+| **Ottoline's Missing Gears** | Ottoline (ch. 3) | Find 4 brass gears: one behind twin plates in ch. 1, one behind twin plates in ch. 2, one behind a cracked wall in ch. 0, one in the Clock Face (ch. 3) | 2 echoes, Hask's pickaxe | Ottoline restarts the **Spire lifts**: shortcuts between all ch. 3 shrines, and a music-box version of the soundtrack in Lanternrest |
+| **Letters Never Sent** | A Lingering postman (ch. 1) | Three frozen echoes hold letters they never sent. Carry each letter to its recipient's echo in another chapter (ch. 0 ↔ ch. 2, ch. 1 ↔ ch. 3, ch. 2 ↔ ch. 0). When a letter arrives, both echoes move for one second | Fast travel | 3 Lost Pages, new Lingering thoughts, a short memory scene |
+| **Pip's Shiny Collection** | Pip (ch. 1) | Pip wants 10 shiny things hidden in the corners of rooms (sparkle on screen) | — | Pip's nest in Lanternrest + Pip's hints get funnier |
+| **Bramble's Rematch** | Bramble (after ch. 2) | Race Bramble's "champion", an echo of a racing snail, through a Vale course. Best ghost time to beat | Dash | Bramble admits defeat (a first). Lost Page |
+| **Quill's Atlas** | Quill (ch. 0) | Ongoing: bring Lost Pages | — | Secret rooms on the map; at 30 pages, Quill's finished atlas and an epilogue scene |
+| **Lumi's Moments** | — (discovered) | Find the 5 moments | Varies | **Required for the true ending** |
+
+**Backtracking rhythm.** The game nudges the player back at three natural moments:
+1. **After the dash (end of ch. 0):** Tamsin mentions "the old road had gaps you couldn't cross before".
+2. **After the rewind (ch. 2):** Hask's quest sends you to the Well of Stars in ch. 0, through hanging-switch gates.
+3. **After 2 echoes (ch. 3):** Ottoline's gears pull you back through twin-plate gates in ch. 1 and 2.
+
+Each return trip is short (fast travel), and the old areas *change* slightly when you come back: more NPC lines, new Lingering thoughts and new Lumi's Moment angles.
+
 ---
 
 ## 5. Chapters, room by room
@@ -278,6 +354,12 @@ Iris wakes up in Lanternrest on her "birthday", the day Tamsin decided she is ol
 | 0-9 | The Vale Shrine | First Bell Shrine. Tamsin speaks through the bell for the first time |
 | 0-10 | Shard of Motion | The shard floats over a pit. Taking it unlocks the **dash**. The room is then crossed with a dash to exit |
 
+**Routes:** after the Vale Shrine (0-9) the road forks.
+- **The Orchard Way** (platforming): treetops and swinging lantern ropes. Hides a Lost Page and a shiny thing.
+- **The Millrace** (puzzle): drop-through platforms and a water wheel you stop by standing on its paddles. Hides a Lost Page and a view of Lumi's field from above.
+
+**Come back later:** a long gap behind the mill (dash), the dark bottom of the Well of Stars (Pip's lantern, Hask's pickaxe), a hanging switch over the old quarry (rewind), a cracked wall in the old mill's cellar (pickaxe: Ottoline's gear).
+
 **Ending beat:** as Iris lifts the shard, a violet fog seeps from the cliffs above. A tall silhouette watches her from the ridge (the Stillwarden, first sighting), then disappears.
 
 ### Chapter 1: Starfall Ruins
@@ -298,6 +380,12 @@ The ruins of the Tollers' old town, built on stone bridges over a bottomless gor
 | 1-9 | The Long Bridge | Scrolling chase: the bridge collapses behind Iris (crumble cascade) |
 | 1-10 | Ruins Shrine | Bell Shrine. Tamsin tells the story of the Tollers |
 | 1-11 | Shard of Light | Mini gauntlet using everything, then the shard |
+
+**Routes:** after the Ruins Shrine (1-10).
+- **The High Road** (platforming): rooftops, wind vents, the rose garden roof (Starbloom Tea quest).
+- **The Low Road** (puzzle): under the bridges, crumble-stone puzzles, the Lingering postman (Letters Never Sent).
+
+**Come back later:** twin plates in the Bell Foundry (2 echoes: Ottoline's gear), a hanging switch over the gorge (rewind: a Resonant Note shortcut), an echo seal on the Archive door (3 echoes: post-game shortcut).
 
 **Ending beat:** the Stillwarden blocks the way up and speaks for the first time ("Go home, little bell."). He seals the bridge with Stillness. Iris falls into the gorge… and lands in the caves below.
 
@@ -321,10 +409,16 @@ Crystal caves under the gorge, cyan reflections everywhere, deep pits, undergrou
 | 2-11 | Cave Shrine | Bell Shrine. Tamsin, shaken, admits she knows the Stillwarden |
 | 2-12 | Shard of Memory | Puzzle using every technique of the chapter |
 
+**Routes:** after the Cave Shrine (2-11).
+- **The Flooded Tunnels** (platforming): rising and falling water, a race against the current.
+- **The Crystal Galleries** (puzzle): mirror pools in chains, light beams bounced off echoes.
+
+**Come back later:** twin plates at the mine office (2 echoes: Ottoline's gear), cracked walls in the lower mines (pickaxe: Hask's old stash, a Resonant Note shortcut).
+
 **Ending beat:** Hask opens the old mine elevator to Clockwork Spire and a shortcut back to Lanternrest.
 
 ### Chapter 3: Clockwork Spire
-**Music:** *Tick of the Spire* · **Teaches:** 2 echo slots, timed gates, cog platforms, levers, **Stillness fog** · **Shard:** Shard of Hours (unlocks fast travel)
+**Music:** *Tick of the Spire* · **Teaches:** 2 echo slots, timed gates, cog platforms, levers, **Stillness fog** · **Shard:** Shard of Hours (the map now shows what's left to find in each room)
 
 A giant tower of brass gears and stopped clocks clinging to the cliff. Everything is amber, steam leaks from pipes, and pendulums hang motionless.
 
@@ -342,6 +436,12 @@ A giant tower of brass gears and stopped clocks clinging to the cliff. Everythin
 | 3-10 | The Escapement | Stillwarden chase: fog rising from below, climb fast with echo ladders |
 | 3-11 | Spire Shrine | Bell Shrine. Tamsin tells the whole truth about Corin and Lumi |
 | 3-12 | Shard of Hours | Ottoline restarts one clock: the first time anything has ticked in a hundred years |
+
+**Routes:** after the Spire Shrine (3-11).
+- **Inside the Gears** (puzzle): cog platforms and timed gates in the clock's heart.
+- **Outside the Clock Face** (platforming): wind, the giant hands as moving platforms, the Clock Face ★ room.
+
+**Come back later:** echo seals on the Archive vault (3 echoes: Corin's last journal pages, post-game).
 
 **Ending beat:** for one second, the stars move. Everyone in the valley sees it.
 
@@ -370,6 +470,39 @@ The tower from the prologue, frozen in the rain of a hundred years ago: raindrop
 3. **The Mirror:** Corin uses the Stillness to freeze Iris's own echoes and turn them against her as moving walls. The only way through is to rewind *into* them and reclaim them, one by one.
 
 At the end, Corin falls to his knees beside the Bell. He doesn't fight anymore.
+
+**Routes:** the Belltower has two ascents that meet at the Last Shrine. **The Rain Stairs** go up the outside on frozen raindrops (platforming); **the Rope Lift** goes up the inside by balancing counterweights with echoes (puzzle). After the Last Shrine, the finale is linear on purpose.
+
+### World connections
+
+```
+                         ┌───────────── THE BELLTOWER (4) ─────────────┐
+                         │  Rain Stairs ──┐        ┌── Rope Lift       │
+                         │                └─ Last Shrine ─ Finale      │
+                         └────────────────────────▲────────────────────┘
+                                                  │
+     ┌───────────── CLOCKWORK SPIRE (3) ──────────┴─────────────┐
+     │  Inside the Gears ──┐            ┌── Outside the Clock   │◄── Spire lifts (Ottoline's quest)
+     │                     └─ Shard of Hours                    │
+     └───────────────▲──────────────────────────────────────────┘
+                     │ Hask's elevator
+     ┌───────────── MIRROR CAVES (2) ────────────────────────────┐
+     │  Flooded Tunnels ──┐            ┌── Crystal Galleries     │
+     │                    └─ Shard of Memory                     │◄── mine shortcut to Lanternrest
+     └───────────────▲───────────────────────────────────────────┘
+                     │ the fall from the bridge
+     ┌───────────── STARFALL RUINS (1) ──────────────────────────┐
+     │  High Road ──┐                  ┌── Low Road              │
+     │              └─ Shard of Light                            │
+     └───────────────▲───────────────────────────────────────────┘
+                     │
+     ┌───────────── THE QUIET VALE (0) ──────────────────────────┐
+     │  Orchard Way ──┐                ┌── Millrace              │
+     │                └─ Shard of Motion                         │
+     └───────────────▲───────────────────────────────────────────┘
+                     │
+                LANTERNREST (hub) ◄── fast travel from every Bell Shrine
+```
 
 ---
 
@@ -721,6 +854,8 @@ PRESS A KEY...      (while rebinding)
 ```
 PAUSED
   > RESUME
+    MAP          (planned)
+    JOURNAL      (planned: side quests, collectibles, Lost Pages)
     RESTART ROOM
     SETTINGS
     MAIN MENU
@@ -765,6 +900,7 @@ THANKS FOR PLAYING
 | Rewind | R | RB | Planned (chapter 2) |
 | Talk | Up | Up | Near an NPC |
 | Pause | Esc ✅ | Start | Also "back" in menus |
+| Map | M | Select | Planned. World / chapter map, fast travel at shrines |
 | Debug overlay | F3 ✅ | — | Hitbox, speeds, dash and double-jump state |
 
 Every key can be rebound in **Settings → Controls** ✅. Bindings use physical key positions, so the default WASD sits under ZQSD on an AZERTY keyboard, and the menu shows the label printed on *your* keyboard. Arrow keys always work for movement and menus.
