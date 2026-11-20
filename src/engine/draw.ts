@@ -8,8 +8,12 @@ const GLYPH_H = FONT.glyph[1];
 export const LINE_H = GLYPH_H + 2;
 
 /** Sprite & text helpers bound to the loaded images. */
+type Rect = { x: number; y: number; w: number; h: number };
+const DECOR = manifest.decor.rects as Record<string, Rect>;
+
 export class Draw {
   private readonly tinted = new Map<string, HTMLCanvasElement>();
+  private darkDecor: HTMLCanvasElement | null = null;
 
   constructor(
     readonly ctx: CanvasRenderingContext2D,
@@ -102,6 +106,57 @@ export class Draw {
       ctx.drawImage(image, index * fw, (opts.row ?? 0) * fh, fw, fh, dx, dy, fw, fh);
     }
     ctx.restore();
+  }
+
+  /** Size of a decor sprite (first frame for animated ones), or null if unknown. */
+  decorSize(name: string): Rect | null {
+    return DECOR[name] ?? DECOR[`${name}_0`] ?? null;
+  }
+
+  /**
+   * Draws a decoration with its bottom-centre at (x, y).
+   * Animated decor (name_0 / name_1, like grass) sways on its own rhythm.
+   */
+  decor(name: string, x: number, y: number, opts: { flip?: boolean; dark?: boolean; t?: number; alpha?: number } = {}): void {
+    let r = DECOR[name];
+    if (!r) {
+      const frame = Math.floor((opts.t ?? 0) * 1.6 + x * 0.13) % 2;
+      r = DECOR[`${name}_${frame}`];
+      if (!r) return;
+    }
+    const src = opts.dark ? this.darkAtlas() : this.img.decor;
+    const dx = Math.round(x - r.w / 2);
+    const dy = Math.round(y - r.h);
+    const ctx = this.ctx;
+    if (opts.alpha !== undefined) ctx.globalAlpha = opts.alpha;
+    if (opts.flip) {
+      ctx.save();
+      ctx.translate(dx + r.w, dy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(src, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+      ctx.restore();
+    } else {
+      ctx.drawImage(src, r.x, r.y, r.w, r.h, dx, dy, r.w, r.h);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** The decor atlas blended towards the night: for far-away background props. */
+  private darkAtlas(): HTMLCanvasElement {
+    if (!this.darkDecor) {
+      const src = this.img.decor;
+      const c = document.createElement("canvas");
+      c.width = src.width;
+      c.height = src.height;
+      const g = get2d(c);
+      g.drawImage(src, 0, 0);
+      g.globalCompositeOperation = "source-atop";
+      g.globalAlpha = 0.55;
+      g.fillStyle = C.night1;
+      g.fillRect(0, 0, c.width, c.height);
+      this.darkDecor = c;
+    }
+    return this.darkDecor;
   }
 
   ui(name: UiName, x: number, y: number, w?: number): void {

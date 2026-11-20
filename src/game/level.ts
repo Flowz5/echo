@@ -38,6 +38,14 @@ export interface Checkpoint extends Point {
 
 export type Props = Record<string, string | number | boolean>;
 
+/** A decoration sprite (not solid). x,y = bottom-centre. */
+export interface Decor extends Point {
+  sprite: string;
+  /** back: behind the tiles, darkened (far away); mid: behind Iris; front: in front of Iris */
+  layer: "back" | "mid" | "front";
+  flip: boolean;
+}
+
 /** Things placed in a room from Tiled: collectibles and NPCs. */
 export interface Entity extends Point {
   /** unique across the game: "<room>:<tiled object id>" */
@@ -60,6 +68,8 @@ export class Level {
   readonly spawns: Point[];
   readonly checkpoints: Checkpoint[];
   readonly entities: Entity[];
+  /** hand-placed (Tiled "deco" objects) + procedural decorations */
+  decor: Decor[] = [];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
   outside: ((tx: number, ty: number) => Tile | null) | null = null;
   /** Trigger zones of the pressure plates (the lower part of their tile). */
@@ -190,6 +200,10 @@ export class Level {
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
       }
     }
+  }
+
+  /** Crystals and shrines: drawn after the decorations so nothing hides them. */
+  renderCheckpoints(draw: Draw, camX: number, camY: number): void {
     for (const c of this.checkpoints) {
       if (c.kind === "shrine") draw.frame(draw.img.shrine, 0, c.x - 8 - camX, c.y - 32 - camY, { fh: 32 });
       else draw.frame(draw.img.props, c.active ? 4 : 3, c.x - 8 - camX, c.y - 16 - camY);

@@ -955,6 +955,10 @@ if __name__ == "__main__":
             editor.px[y][64 + x] = door_icon.px[y + 8][x]
     editor.save(S("levels", "terrain.png"))
 
+    from decor_art import build_decor, pack  # noqa: E402 (decor sprites live in their own file)
+    decor_atlas, decor_rects = pack(build_decor())
+    decor_atlas.save(S("sprites", "decor.png"))
+
     ui_atlas, ui_rects = build_ui()
     ui_atlas.save(S("ui", "ui.png"))
     font = build_font()
@@ -986,6 +990,7 @@ if __name__ == "__main__":
         "door": {"file": "sprites/door.png", "frame": [16, 32], "order": ["closed", "open"]},
         "collectibles": {"file": "sprites/collectibles.png", "frame": [16, 16], "order": ["shard", "note", "page", "moment"]},
         "shrine": {"file": "sprites/shrine.png", "frame": [16, 32]},
+        "decor": {"file": "sprites/decor.png", "rects": decor_rects, "_note": "names ending in _0/_1 are 2-frame animations"},
         "npc": {"file": "sprites/npc.png", "frame": [16, 24], "order": ["idle", "blink"], "_note": "placeholder for every NPC until each gets its own sprite"},
         "ui": {"file": "ui/ui.png", "rects": ui_rects},
         "font": {"file": "ui/font.png", "glyph": [5, 7], "advance": 6, "order": FONT_ORDER, "uppercaseOnly": True},
