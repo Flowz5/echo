@@ -767,6 +767,9 @@ if __name__ == "__main__":
 
     player, echo, anims = build_player()
     player.save(S("sprites", "player.png"))
+    favicon = Img(16, 16)
+    favicon.blit(player, 0, 0)  # first idle frame
+    favicon.scaled(4).save(os.path.join(ROOT, "..", "public", "favicon.png"))
     echo.save(S("sprites", "echo.png"))
 
     tiles_img = [make_tile(m) for m in range(16)]
