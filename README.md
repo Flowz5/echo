@@ -40,18 +40,20 @@ Every key can be rebound in **Settings → Controls**. Movement tuning lives in 
 ## Project layout
 
 ```
-assets/        art bible (SCRIPT.md), palette, sprites, UI, backgrounds
+assets/        art bible (SCRIPT.md), palette, sprites, UI, backgrounds, levels (Tiled)
 public/        favicon
 src/
   engine/      renderer (320x180, integer scaling), fixed-step loop, input, assets, drawing, audio
-  game/        level (tiles, collisions), player movement, particles, rooms
+  game/        world & rooms (Tiled loader), level, player, echoes, scarf, particles
   scenes/      main menu, settings, controls, credits, game (camera, pause)
   audio/       chiptune synth, music sequencer and the original tracks
   ui/          reusable option list (keyboard + mouse)
   settings.ts  persisted settings (localStorage)
-tools/         sprite generator
+tools/         sprite generator, ASCII → Tiled room drafter
 ```
 
 Music is composed in code (`src/audio/tracks.ts`) and played by a tiny Web Audio sequencer; no audio files.
+
+Levels are made in [Tiled](https://www.mapeditor.org/): see [`assets/levels/README.md`](assets/levels/README.md).
 
 See [`assets/SCRIPT.md`](assets/SCRIPT.md) for the story, mechanics and art direction.

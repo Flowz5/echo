@@ -1,18 +1,23 @@
 import { C, COLORS, HEIGHT, STEP, WIDTH, manifest } from "../config";
 import { Echo } from "../game/echo";
-import { Level } from "../game/level";
-import { TEST_ROOM } from "../game/levels/test-room";
+import { Level, overlaps, type Point } from "../game/level";
 import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
+import { World, type RoomDef } from "../game/world";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
+const WORLD = "playground";
 const RESPAWN_DELAY = 0.5;
 const CAMERA_LERP_X = 7; // higher = snappier
 const CAMERA_LERP_Y = 4.5;
 const LOOK_AHEAD = 28; // max px the camera leads in the running direction
 const JUMP_WINDOW = 40; // px Iris can rise above her last footing before the camera follows up
+
+// ---- room transitions
+const TRANSITION_TIME = 0.42;
+const UP_BOOST = 230; // going up into a room gives a little hop so you can land
 
 // ---- rewind
 const REWIND_SECONDS = 2;
@@ -21,7 +26,7 @@ const MIN_HISTORY = Math.round(0.25 / STEP); // can't rewind right after (re)spa
 const REWIND_ANIM = 0.32; // seconds of the reverse playback
 const REWIND_COOLDOWN = 0.6;
 const SLOTS_HUD_TIME = 2;
-const TEST_ROOM_ECHOES = 3;
+const ROOM_NAME_TIME = 2.2;
 
 interface Rewinding {
   /** recorded moments, newest first */
@@ -29,11 +34,21 @@ interface Rewinding {
   t: number;
 }
 
+interface Transition {
+  from: RoomDef;
+  /** camera position at the start, in the new room's coordinates */
+  camFromX: number;
+  camFromY: number;
+  t: number;
+}
+
 export class GameScene implements Scene {
-  private readonly level = new Level(TEST_ROOM);
-  private readonly room = new Room(this.level, TEST_ROOM_ECHOES);
+  private readonly world = new World(WORLD);
+  private current: RoomDef;
+  private room: Room;
   private readonly fx = new Effects();
   private readonly player: Player;
+  private respawnPoint: Point;
   private camX = 0;
   private camY = 0;
   private lookAhead = 0;
@@ -44,20 +59,25 @@ export class GameScene implements Scene {
   private paused = false;
   private debug = false;
   private t = 0;
+  private roomNameTimer = 0;
   private readonly pauseMenu: OptionList;
 
   private history: PlayerSnapshot[] = [];
   private rewinding: Rewinding | null = null;
+  private transition: Transition | null = null;
   private rewindCooldown = 0;
   private slotsHud = 0;
 
   constructor(private readonly ctx: Ctx) {
+    this.current = this.world.startRoom;
+    this.room = new Room(this.current.level, this.current.maxEchoes);
+    this.respawnPoint = this.current.level.spawn;
     this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name));
     this.pauseMenu = new OptionList(
       ctx,
       [
         { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
-        { kind: "action", label: "RESTART ROOM", run: () => this.restart() },
+        { kind: "action", label: "RESTART ROOM", run: () => this.restartRoom() },
         { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
         { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
       ],
@@ -65,10 +85,14 @@ export class GameScene implements Scene {
     );
   }
 
+  private get level(): Level {
+    return this.current.level;
+  }
+
   enter(from: ScreenName | null): void {
     if (from === "settings") return; // back from the pause menu's settings: keep the run
     this.ctx.audio.playMusic("vale");
-    this.restart();
+    this.startRun();
   }
 
   private setPaused(paused: boolean): void {
@@ -76,22 +100,40 @@ export class GameScene implements Scene {
     this.ctx.audio.setDucked(paused);
   }
 
-  private restart(): void {
+  /** A fresh run from the first room: checkpoints forgotten. */
+  private startRun(): void {
+    for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
+    this.setRoom(this.world.startRoom);
+    this.respawnPoint = this.level.spawn;
+    this.restartRoom();
+  }
+
+  /** Back to the respawn point of the current room, room state reset. */
+  private restartRoom(): void {
     this.setPaused(false);
     this.fx.clear();
     this.resetRoom();
-    this.player.respawn();
+    this.player.respawnAt(this.respawnPoint);
     this.respawnTimer = 0;
+    this.transition = null;
     this.snapCamera();
   }
 
-  /** Death or restart: echoes vanish, plates and doors reset, history is forgotten. */
+  /** Death, restart or leaving: echoes vanish, plates and doors reset, history is forgotten. */
   private resetRoom(): void {
     this.room.clearEchoes();
     this.level.doorsOpen = false;
     this.history = [];
     this.rewinding = null;
     this.rewindCooldown = 0;
+  }
+
+  private setRoom(def: RoomDef): void {
+    this.current = def;
+    this.room = new Room(def.level, def.maxEchoes);
+    this.player.setCollider(this.room);
+    this.resetRoom();
+    this.roomNameTimer = ROOM_NAME_TIME;
   }
 
   update(dt: number): void {
@@ -115,11 +157,15 @@ export class GameScene implements Scene {
       return;
     }
 
+    this.roomNameTimer = Math.max(0, this.roomNameTimer - dt);
+    if (this.transition) {
+      this.updateTransition(dt);
+      return;
+    }
     if (this.rewinding) {
       this.updateRewind(dt);
       return;
     }
-
     if (this.freeze > 0) {
       this.freeze -= dt; // hit-stop: the world holds its breath
       return;
@@ -143,9 +189,11 @@ export class GameScene implements Scene {
       this.freeze = p.freeze;
       p.freeze = 0;
     }
+    if (!p.dead && this.checkTransition()) return;
     if (!p.dead) {
       this.history.push(p.snapshot());
       if (this.history.length > HISTORY) this.history.shift();
+      this.checkCheckpoints();
     }
     if (p.dead && !wasDead) {
       this.respawnTimer = RESPAWN_DELAY;
@@ -155,7 +203,7 @@ export class GameScene implements Scene {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
         this.resetRoom();
-        p.respawn();
+        p.respawnAt(this.respawnPoint);
         this.ctx.sfx("respawn");
         this.fx.burst(p.x + 4, p.y + 6, 14, { colors: [C.echo, C.echoLight, C.bone], speed: 50, life: 0.4 });
       }
@@ -165,6 +213,58 @@ export class GameScene implements Scene {
     this.fx.update(dt);
     this.shake = Math.max(0, this.shake - dt);
     this.updateCamera(dt);
+  }
+
+  // ------------------------------------------------------------------ rooms
+  /** Walking off an edge into a neighbouring room starts a transition. */
+  private checkTransition(): boolean {
+    const p = this.player;
+    const lv = this.level;
+    const cx = p.x + 4;
+    const cy = p.y + 6;
+    if (cx >= 0 && cx < lv.width && cy >= 0 && cy < lv.height) return false;
+    const next = this.world.roomAt(this.current.x + cx, this.current.y + cy, this.current);
+    if (!next) return false;
+
+    const from = this.current;
+    const dx = from.x - next.x;
+    const dy = from.y - next.y;
+    this.transition = { from, camFromX: this.camX + dx, camFromY: this.camY + dy, t: 0 };
+    p.shift(dx, dy);
+    if (cy < 0) p.vy = Math.min(p.vy, -UP_BOOST);
+    this.fx.clear();
+    this.setRoom(next);
+
+    // respawn: an active checkpoint in this room, else the spawn nearest to where Iris came in
+    const active = next.level.checkpoints.find((c) => c.active);
+    this.respawnPoint = active ?? next.level.nearestSpawn({ x: p.x + 4, y: p.y + 12 });
+    this.focusY = p.y;
+    return true;
+  }
+
+  private updateTransition(dt: number): void {
+    const tr = this.transition!;
+    tr.t = Math.min(1, tr.t + dt / TRANSITION_TIME);
+    const k = tr.t < 0.5 ? 4 * tr.t ** 3 : 1 - (-2 * tr.t + 2) ** 3 / 2; // ease in-out
+    const target = this.cameraTarget();
+    this.camX = tr.camFromX + (target.x - tr.camFromX) * k;
+    this.camY = tr.camFromY + (target.y - tr.camFromY) * k;
+    if (tr.t >= 1) this.transition = null;
+  }
+
+  /** Touching a crystal makes it the respawn point and refills the dash and double jump. */
+  private checkCheckpoints(): void {
+    const p = this.player;
+    for (const c of this.level.checkpoints) {
+      if (!overlaps(p.hitbox, Level.checkpointRect(c))) continue;
+      p.refill();
+      if (c.active) continue;
+      for (const r of this.world.rooms) for (const other of r.level.checkpoints) other.active = false;
+      c.active = true;
+      this.respawnPoint = { x: c.x, y: c.y };
+      this.ctx.sfx("checkpoint");
+      this.fx.burst(c.x, c.y - 9, 18, { colors: [COLORS.C, COLORS.e, COLORS.E, COLORS.W], speed: 60, life: 0.6 });
+    }
   }
 
   // ------------------------------------------------------------------ rewind
@@ -198,11 +298,10 @@ export class GameScene implements Scene {
     const past = rw.path[rw.path.length - 1];
 
     // freeze the moment Iris leaves behind, unless she was in the void or inside something
-    const pose = { ...p.pose, frame: now.frame, facing: now.facing };
     const hitbox = { x: now.x, y: now.y, w: p.hitbox.w, h: p.hitbox.h };
     const inVoid = now.y > this.level.height;
     if (!inVoid && !this.level.solidAt(hitbox)) {
-      const echo = new Echo(hitbox, pose.frame, pose.facing, now.x - 4, now.y - 4);
+      const echo = new Echo(hitbox, now.frame, now.facing, now.x - 4, now.y - 4);
       const shattered = this.room.addEcho(echo);
       if (shattered) this.shatter(shattered);
       this.ctx.sfx("echoAppear");
@@ -270,11 +369,15 @@ export class GameScene implements Scene {
     const camX = Math.round(this.camX) + sx;
     const camY = Math.round(this.camY) + sy;
 
-    // parallax backdrop
+    // parallax backdrop follows the world camera, so it flows across rooms
     ctx.drawImage(img.sky, 0, 0);
-    this.layer(img.mountains, manifest.backgrounds.mountains.parallax, camX, camY);
-    this.layer(img.hills, manifest.backgrounds.hills.parallax, camX, camY);
+    this.layer(img.mountains, manifest.backgrounds.mountains.parallax, camX + this.current.x, camY + this.current.y);
+    this.layer(img.hills, manifest.backgrounds.hills.parallax, camX + this.current.x, camY + this.current.y);
 
+    if (this.transition) {
+      const from = this.transition.from;
+      from.level.render(draw, camX - (from.x - this.current.x), camY - (from.y - this.current.y), WIDTH, HEIGHT);
+    }
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
     this.fx.renderBehind(draw, camX, camY);
@@ -287,6 +390,7 @@ export class GameScene implements Scene {
     if (p.voidTime > 0 && !p.dead) draw.rect(0, 0, WIDTH, HEIGHT, C.void, Math.min(0.6, (p.voidTime / TUNING.voidGrace) * 0.6));
 
     this.renderSlots();
+    this.renderRoomName();
     if (this.debug) this.renderDebug(camX, camY);
 
     if (this.paused) {
@@ -334,12 +438,20 @@ export class GameScene implements Scene {
     }
   }
 
+  /** Room name fades in at the bottom-left when entering a room. */
+  private renderRoomName(): void {
+    if (this.roomNameTimer <= 0) return;
+    const alpha = Math.min(1, this.roomNameTimer * 2, (ROOM_NAME_TIME - this.roomNameTimer) * 4);
+    this.ctx.draw.ctx.globalAlpha = alpha;
+    this.ctx.draw.text(this.current.name.toUpperCase().replace(/[-_]/g, " "), 6, HEIGHT - 12, C.ash);
+    this.ctx.draw.ctx.globalAlpha = 1;
+  }
+
   /** Layers scroll with the camera at their parallax factor and stay anchored to the screen bottom. */
-  private layer(image: HTMLImageElement, parallax: number, camX: number, camY: number): void {
+  private layer(image: HTMLImageElement, parallax: number, worldCamX: number, worldCamY: number): void {
     const w = image.width;
-    const x = -(((Math.round(camX * parallax) % w) + w) % w);
-    const maxCamY = Math.max(1, this.level.height - HEIGHT);
-    const y = HEIGHT - image.height + Math.round((1 - camY / maxCamY) * 12 * parallax * 4);
+    const x = -(((Math.round(worldCamX * parallax) % w) + w) % w);
+    const y = HEIGHT - image.height + Math.round(-worldCamY * parallax * 0.3) + 8;
     this.ctx.draw.ctx.drawImage(image, x, y);
     this.ctx.draw.ctx.drawImage(image, x + w, y);
   }
@@ -350,8 +462,9 @@ export class GameScene implements Scene {
     const hb = p.hitbox;
     draw.rect(hb.x - camX, hb.y - camY, hb.w, hb.h, C.gold, 0.5);
     for (const e of this.room.echoes) draw.rect(e.hitbox.x - camX, e.hitbox.y - camY, e.hitbox.w, e.hitbox.h, e.armed ? C.echo : C.slate, 0.5);
+    draw.rect(this.respawnPoint.x - 1 - camX, this.respawnPoint.y - 2 - camY, 3, 3, C.gold);
     const lines = [
-      `STATE ${p.state.toUpperCase()}`,
+      `ROOM ${this.current.name.toUpperCase()}  STATE ${p.state.toUpperCase()}`,
       `VX ${Math.round(p.vx)} VY ${Math.round(p.vy)}`,
       `DASH ${p.canDash ? "READY" : "USED"}  2ND JUMP ${p.canDoubleJump ? "READY" : "USED"}`,
       `ECHOES ${this.room.echoes.length}/${this.room.maxEchoes}  HISTORY ${(this.history.length * STEP).toFixed(1)}S`,

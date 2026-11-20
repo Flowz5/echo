@@ -26,6 +26,16 @@ export class Scarf {
     }
   }
 
+  /** Moves the whole scarf (room transitions). */
+  shift(dx: number, dy: number): void {
+    for (let i = 0; i < SEGMENTS; i++) {
+      this.x[i] += dx;
+      this.ox[i] += dx;
+      this.y[i] += dy;
+      this.oy[i] += dy;
+    }
+  }
+
   /**
    * @param ax,ay anchor (the collar) in world pixels
    * @param speed how fast Iris moves (px/s): the faster, the more the scarf streams behind

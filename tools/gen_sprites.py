@@ -789,6 +789,19 @@ if __name__ == "__main__":
     door = sheet([make_door(False), make_door(True)])
     door.save(S("sprites", "door.png"))
 
+    # editor tileset for Tiled: one tile per terrain type (the game autotiles the ground itself)
+    # order = Tiled tile ids 0..4: ground, one-way platform, spikes, pressure plate, door
+    editor = Img(16 * 5, 16)
+    editor.blit(tiles_img[15], 0, 0)
+    editor.blit(from_grid(PLATFORM), 16, 0)
+    editor.blit(from_grid(SPIKES), 32, 0)
+    editor.blit(from_grid(BUTTON_UP), 48, 0)
+    door_icon = make_door(False)
+    for y in range(16):
+        for x in range(16):
+            editor.px[y][64 + x] = door_icon.px[y + 8][x]
+    editor.save(S("levels", "terrain.png"))
+
     ui_atlas, ui_rects = build_ui()
     ui_atlas.save(S("ui", "ui.png"))
     font = build_font()
