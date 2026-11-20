@@ -2,7 +2,7 @@
 
 > A fast, precise 2D platformer where you rewind time and use your own frozen echoes to survive.
 
-**Status:** living document, v0.3. Everything here is the target design; what is already implemented is marked ✅.
+**Status:** living document, v0.4. Everything here is the target design; what is already implemented is marked ✅.
 
 ---
 
@@ -326,6 +326,31 @@ Side quests are given by NPCs, tracked in **PAUSE → JOURNAL** and marked on th
 3. **After 2 echoes (ch. 3):** Ottoline's gears pull you back through twin-plate gates in ch. 1 and 2.
 
 Each return trip is short (fast travel), and the old areas *change* slightly when you come back: more NPC lines, new Lingering thoughts and new Lumi's Moment angles.
+
+### 4.12 Time fractures (zone variations)
+The crack in Aurel did not break time evenly. In some places it **bent** instead of stopping: these are **time fractures**, bounded zones where the rules of movement change. They are the valley's "weather" and give each chapter its own flavour.
+
+**Rules**
+- A fracture is always **clearly bounded**: a shimmering outline, its own particles, a colour tint and a change in the music (filter or pitch), so the player knows *before* entering.
+- Effects apply the moment Iris's hitbox enters and stop when she leaves (with a 0.1 s blend so the change never feels like a glitch).
+- **Echoes keep the rules of the zone they were created in.** An echo frozen in low gravity stays floating; an echo created in a fast zone keeps vibrating.
+- The rewind records which zone Iris was in. Rewinding *out of* a fracture is a valid technique.
+- Fractures never stack: the latest one entered wins.
+
+| Fracture | Effect | Look & sound | Main chapter | Puzzle idea |
+|---|---|---|---|---|
+| **Drift** (low gravity) | Gravity ×0.45, max fall ×0.6, jumps ~2× higher, longer airtime | Slow-falling dust motes, bluish tint, music low-passed and reverb up | 1 Starfall Ruins | Long floating jumps over the gorge, dash in the air to steer, echoes left mid-float become high platforms |
+| **Weight** (heavy gravity) | Gravity ×1.6, jump ~60 %, but dash ×1.3 | Dust falls fast, darker tint, deeper bass | 2 Mirror Caves | Jumps can't reach, so dashes and echo steps must |
+| **Haste** (fast time) | Everything in the zone (Iris, platforms, hazards) runs at 1.4× speed | Particles streak, music pitched up a semitone | 3 Clockwork Spire | Timed gates that are impossible outside the zone, possible inside |
+| **Linger** (slow time) | Everything runs at 0.6× speed, *except* Iris's dash | Particles crawl, music slows and stretches | 3 Clockwork Spire | Slip between slowed pendulums and crushers |
+| **Inversion** (upside-down gravity) | Gravity points up: Iris walks on ceilings, the camera rolls 180° smoothly | Stars fall upward, the music plays its melody backwards | 4 Belltower | Echoes left before entering stay "down", echoes left inside stay "up": two-sided puzzles |
+| **Stutter** | Time skips: every 0.8 s the zone freezes for 0.2 s (Iris keeps moving, the world doesn't) | Flickering frames, a tape-stop sound on each skip | 2 Mirror Caves | Cross moving hazards during the freezes |
+| **Undertow** | Time flows *backwards* inside: moving platforms rewind their path, falling rocks rise | Reversed particles, reversed cymbals | 4 Belltower | Ride a collapsing bridge that rebuilds itself backwards |
+| **Echo storm** | Every 4 s the zone rewinds *everything except Iris* by 2 s | Cyan pulses, a heartbeat-like whoosh | 4 Belltower (finale) | Use the storm as a free extra "echo": what the world undoes, you keep |
+
+**Chapter distribution:** ch. 0 has none (clean tutorial). Ch. 1 introduces **Drift** in its second half. Ch. 2 adds **Weight** and **Stutter**. Ch. 3 adds **Haste** and **Linger**. Ch. 4 adds **Inversion**, **Undertow** and the **Echo storm**, and remixes all of them. The post-game Echo Trials combine two fractures per room.
+
+**Lore:** Ottoline studies fractures ("they're like the valley's clock skipping teeth"), and Pip loves Drift zones because "FLOATING IS JUST FLYING FOR PEOPLE WITHOUT WINGS!".
 
 ---
 
@@ -689,6 +714,24 @@ A third option appears: **RETUNE THE BELL**. The seven notes play as a melody (t
 - **Echo Trials:** 10 remixed, very hard rooms (one per chapter + 5 finales), unlocked after any ending. 2 hidden Resonant Notes (VI and VII).
 - **Chapter select** with best time and deaths per chapter.
 - **Dawn mode:** replay any chapter in the new daylight palette after ending A or the true ending.
+
+### 7.5 Easter eggs
+Hard-to-find secrets, never mentioned by any NPC or hint. None is needed for 100 %, but each unlocks a small reward listed in **EXTRAS** (main menu) once found.
+
+| # | Name | How to find it | Reward |
+|---|---|---|---|
+| 1 | **The Thirteenth Toll** | On the main menu, click the moon exactly 12 times, then wait without touching anything until the music loops once | A thirteenth bell tolls, the logo reads **OHCE** for one loop, and the menu music plays backwards. Unlocks the "Backwards" music option |
+| 2 | **Bell Motif** | In the Belltower, hit four bell chimes in the order of the Bell motif (E–C–D–E: low, lowest, middle, low), within 6 seconds, without touching the ground | The chimes play a full chord, and a hidden room opens behind the bells with a music box. Unlocks the **Music Box** soundtrack |
+| 3 | **Finally** | In Lanternrest, stand perfectly still for 2 real minutes with Pip nearby (no input at all) | Pip finally lands on the Eye. Achievement **FINALLY**. Pip sits there in every cutscene from then on |
+| 4 | **The First Fall** | The game silently remembers where you died for the very first time | In the true ending's final shot, a faint echo of Iris stands exactly at that spot and waves |
+| 5 | **Reflection** | In Mirror Lake (2-7), stand still on the shore facing the water for 60 seconds | Iris's reflection waves at her, takes off its mask (we never see its face, only light) and walks out of frame. A Lost Page appears on the shore |
+| 6 | **One More Bug** | In the Lantern Market (1-8), dash *through* the market stall roof from below while holding down (only possible with a precise down-diagonal dash into a corner) | A secret back room with a Lingering figure frozen at a desk, typing. Thought: "ONE MORE BUG BEFORE THE TWELFTH TOLL." A sign reads "FLOWZ WAS HERE" |
+| 7 | **Moss's Sentence** | Talk to Moss 50 times across the game (the counter is never shown) | Moss finally finishes the sentence he has been starting since chapter 0: "…and that is why… tea… should always… be shared." Bramble is speechless |
+| 8 | **Kite String** | After the true ending, return to Lumi's Field (0-7) and double jump off the kite's echo at the top of the screen, three times in a row without landing | You climb above the map into a hidden sky room: the kite is real now. Iris holds it for a moment. The game's last unseen line: "THANK YOU." |
+| 9 | **Golden Scarf** | Finish any chapter without dying | That chapter's scarf turns gold in chapter select. All 5 chapters: a golden scarf you can wear anywhere |
+| 10 | **Twelve Seconds** | In the prologue, wait in front of the hammer for 12 real seconds before lifting it | Corin hums the first notes of Lumi's lullaby. Only noticeable with sound on. Unlocks a hidden extra Lost Page in the Archive |
+
+**Design rules for easter eggs:** never block progress, never punish experimenting, and always reward with something *small and charming* rather than power.
 
 ---
 
