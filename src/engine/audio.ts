@@ -14,7 +14,13 @@ export type SfxName =
   | "dash"
   | "land"
   | "death"
-  | "respawn";
+  | "respawn"
+  | "rewind"
+  | "rewindFail"
+  | "echoAppear"
+  | "echoShatter"
+  | "doorOpen"
+  | "doorClose";
 
 /**
  * Audio graph: music bus + sfx bus -> compressor -> speakers.
@@ -137,6 +143,30 @@ export class AudioEngine {
       case "death":
         s.tone(out, { freq: 700, to: 60, t, dur: 0.45, wave: "square", gain: 0.2 });
         s.noise(out, { t, dur: 0.35, gain: 0.35, type: "lowpass", freq: 2400, to: 200 });
+        break;
+      case "rewind":
+        // a reversed whoosh: noise sweeping up, a tone sliding down then up
+        s.noise(out, { t, dur: 0.32, gain: 0.4, type: "bandpass", freq: 400, to: 4000, q: 2 });
+        s.tone(out, { freq: 900, to: 220, t, dur: 0.16, wave: "triangle", gain: 0.25 });
+        s.tone(out, { freq: 220, to: 1300, t: t + 0.16, dur: 0.16, wave: "triangle", gain: 0.25 });
+        break;
+      case "rewindFail":
+        s.tone(out, { freq: 180, to: 150, t, dur: 0.08, wave: "square", gain: 0.12 });
+        break;
+      case "echoAppear":
+        ["E6", "B6"].forEach((n, i) => s.tone(out, { freq: noteFreq(n), t: t + i * 0.04, dur: 0.25, wave: "triangle", gain: 0.25, release: 0.2 }));
+        break;
+      case "echoShatter":
+        s.noise(out, { t, dur: 0.25, gain: 0.35, type: "highpass", freq: 3000 });
+        ["C7", "G6", "D7"].forEach((n, i) => s.tone(out, { freq: noteFreq(n), t: t + i * 0.025, dur: 0.08, wave: "pulse12", gain: 0.12 }));
+        break;
+      case "doorOpen":
+        s.tone(out, { freq: 110, to: 220, t, dur: 0.25, wave: "square", gain: 0.12 });
+        s.noise(out, { t, dur: 0.25, gain: 0.2, type: "lowpass", freq: 600 });
+        break;
+      case "doorClose":
+        s.tone(out, { freq: 220, to: 90, t, dur: 0.2, wave: "square", gain: 0.12 });
+        s.noise(out, { t, dur: 0.15, gain: 0.3, type: "lowpass", freq: 500 });
         break;
       case "respawn":
         ["C5", "E5", "G5", "C6"].forEach((n, i) =>
