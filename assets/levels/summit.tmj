@@ -10,7 +10,7 @@
  "tilewidth": 16,
  "tileheight": 16,
  "nextlayerid": 3,
- "nextobjectid": 3,
+ "nextobjectid": 6,
  "compressionlevel": -1,
  "properties": [
   {
@@ -306,8 +306,51 @@
      "name": "",
      "type": "spawn",
      "point": true,
-     "x": 232.0,
+     "x": 136.0,
      "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 3,
+     "name": "",
+     "type": "shrine",
+     "point": true,
+     "x": 296.0,
+     "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 4,
+     "name": "QUILL",
+     "type": "npc",
+     "point": true,
+     "x": 168.0,
+     "y": 64,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "name",
+       "type": "string",
+       "value": "QUILL"
+      }
+     ]
+    },
+    {
+     "id": 5,
+     "name": "",
+     "type": "page",
+     "point": true,
+     "x": 280.0,
+     "y": 112,
      "width": 0,
      "height": 0,
      "rotation": 0,

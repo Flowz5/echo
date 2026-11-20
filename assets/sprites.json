@@ -143,6 +143,38 @@
       "open"
     ]
   },
+  "collectibles": {
+    "file": "sprites/collectibles.png",
+    "frame": [
+      16,
+      16
+    ],
+    "order": [
+      "shard",
+      "note",
+      "page",
+      "moment"
+    ]
+  },
+  "shrine": {
+    "file": "sprites/shrine.png",
+    "frame": [
+      16,
+      32
+    ]
+  },
+  "npc": {
+    "file": "sprites/npc.png",
+    "frame": [
+      16,
+      24
+    ],
+    "order": [
+      "idle",
+      "blink"
+    ],
+    "_note": "placeholder for every NPC until each gets its own sprite"
+  },
   "ui": {
     "file": "ui/ui.png",
     "rects": {

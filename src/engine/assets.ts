@@ -4,6 +4,9 @@ import echoUrl from "../../assets/sprites/echo.png";
 import tilesUrl from "../../assets/sprites/tiles.png";
 import propsUrl from "../../assets/sprites/props.png";
 import doorUrl from "../../assets/sprites/door.png";
+import collectiblesUrl from "../../assets/sprites/collectibles.png";
+import shrineUrl from "../../assets/sprites/shrine.png";
+import npcUrl from "../../assets/sprites/npc.png";
 import uiUrl from "../../assets/ui/ui.png";
 import fontUrl from "../../assets/ui/font.png";
 import titleUrl from "../../assets/ui/title.png";
@@ -17,6 +20,9 @@ const URLS = {
   tiles: tilesUrl,
   props: propsUrl,
   door: doorUrl,
+  collectibles: collectiblesUrl,
+  shrine: shrineUrl,
+  npc: npcUrl,
   ui: uiUrl,
   font: fontUrl,
   title: titleUrl,

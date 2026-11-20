@@ -1,5 +1,6 @@
 import { TILE } from "../config";
 import type { Draw } from "../engine/draw";
+import type { CollectibleKind } from "./progress";
 
 /**
  * Tile legend:
@@ -30,7 +31,19 @@ export interface Point {
 }
 
 export interface Checkpoint extends Point {
+  /** Echo Crystal (room checkpoint) or Bell Shrine (also a save point, later fast travel) */
+  kind: "crystal" | "shrine";
   active: boolean;
+}
+
+export type Props = Record<string, string | number | boolean>;
+
+/** Things placed in a room from Tiled: collectibles and NPCs. */
+export interface Entity extends Point {
+  /** unique across the game: "<room>:<tiled object id>" */
+  key: string;
+  kind: CollectibleKind | "npc";
+  props: Props;
 }
 
 export function overlaps(a: Rect, b: Rect): boolean {
@@ -46,6 +59,7 @@ export class Level {
   /** Respawn spots (Tiled "spawn" objects). */
   readonly spawns: Point[];
   readonly checkpoints: Checkpoint[];
+  readonly entities: Entity[];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
   outside: ((tx: number, ty: number) => Tile | null) | null = null;
   /** Trigger zones of the pressure plates (the lower part of their tile). */
@@ -56,7 +70,10 @@ export class Level {
   platesPressed: boolean[] = [];
   private readonly tiles: Tile[][];
 
-  constructor(map: string[], opts: { name?: string; spawns?: Point[]; checkpoints?: Point[] } = {}) {
+  constructor(
+    map: string[],
+    opts: { name?: string; spawns?: Point[]; checkpoints?: (Point & { kind?: Checkpoint["kind"] })[]; entities?: Entity[] } = {},
+  ) {
     this.name = opts.name ?? "room";
     this.rows = map.length;
     this.cols = map[0].length;
@@ -78,7 +95,8 @@ export class Level {
     this.platesPressed = this.plates.map(() => false);
     if (spawns.length === 0) spawns.push({ x: TILE * 1.5, y: this.height - TILE });
     this.spawns = spawns;
-    this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ ...c, active: false }));
+    this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ kind: "crystal" as const, ...c, active: false }));
+    this.entities = opts.entities ?? [];
   }
 
   /** Default spawn (first one). */
@@ -92,8 +110,8 @@ export class Level {
   }
 
   /** Touch zone of a checkpoint crystal. */
-  static checkpointRect(c: Point): Rect {
-    return { x: c.x - 5, y: c.y - 14, w: 10, h: 14 };
+  static checkpointRect(c: Checkpoint): Rect {
+    return c.kind === "shrine" ? { x: c.x - 8, y: c.y - 28, w: 16, h: 28 } : { x: c.x - 5, y: c.y - 14, w: 10, h: 14 };
   }
 
   /** Tile inside the room only (no neighbour lookup). */
@@ -172,6 +190,9 @@ export class Level {
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
       }
     }
-    for (const c of this.checkpoints) draw.frame(draw.img.props, c.active ? 4 : 3, c.x - 8 - camX, c.y - 16 - camY);
+    for (const c of this.checkpoints) {
+      if (c.kind === "shrine") draw.frame(draw.img.shrine, 0, c.x - 8 - camX, c.y - 32 - camY, { fh: 32 });
+      else draw.frame(draw.img.props, c.active ? 4 : 3, c.x - 8 - camX, c.y - 16 - camY);
+    }
   }
 }

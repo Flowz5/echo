@@ -4,6 +4,7 @@ import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
 import type { Rect } from "./level";
 import type { Effects } from "./particles";
+import type { Ability } from "./progress";
 import type { Collider } from "./room";
 import { Scarf } from "./scarf";
 
@@ -151,6 +152,8 @@ export class Player {
     private level: Collider,
     private readonly fx: Effects,
     private readonly sound: (name: SfxName) => void = () => {},
+    /** which abilities are unlocked (all by default) */
+    private readonly can: (a: Ability) => boolean = () => true,
   ) {
     this.respawn();
   }
@@ -237,14 +240,14 @@ export class Player {
     if (this.grounded) {
       this.coyote = T.coyoteTime;
       this.canDoubleJump = true;
-      if (!this.dashing && this.dashCooldown <= 0 && !this.canDash) {
+      if (!this.dashing && this.dashCooldown <= 0 && !this.canDash && this.can("dash")) {
         this.canDash = true;
         this.fx.burst(this.x + HB_W / 2, this.y + 4, 4, { colors: [COLORS.P, COLORS.q], speed: 30, life: 0.25 });
       }
     }
 
     // ---- dash
-    if (input.justPressed("dash") && this.canDash && this.dashCooldown <= 0) this.startDash(mx, my);
+    if (input.justPressed("dash") && this.can("dash") && this.canDash && this.dashCooldown <= 0) this.startDash(mx, my);
 
     if (this.dashing) {
       this.wallSliding = false;
@@ -301,7 +304,7 @@ export class Player {
   private updateWalls(dt: number, mx: number): void {
     const T = TUNING;
     this.wallSliding = false;
-    if (this.grounded) return;
+    if (this.grounded || !this.can("wallJump")) return;
     const right = this.level.solidAt({ ...this.hitbox, x: this.x + T.wallCheck });
     const left = this.level.solidAt({ ...this.hitbox, x: this.x - T.wallCheck });
     if (right || left) {
@@ -371,7 +374,7 @@ export class Player {
         this.stretch(0.7, 1.35);
       } else if (this.wallCoyote > 0) {
         this.wallJump(mx);
-      } else if (this.canDoubleJump) {
+      } else if (this.canDoubleJump && this.can("doubleJump")) {
         this.canDoubleJump = false;
         this.jump(T.doubleJumpSpeed, T.doubleVarJumpTime);
         this.sound("doubleJump");

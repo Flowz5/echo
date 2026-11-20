@@ -399,6 +399,155 @@ def make_door(open_):
     return img
 
 
+# --------------------------------------------------------------------------- collectibles (16x16)
+SHARD = [
+    "................",
+    "......KK........",
+    ".....KYyK.......",
+    ".....KyAK.......",
+    "....KYyAaK......",
+    "....KyCAaK......",
+    "...KYyCeAaK.....",
+    "...KyCeEAaK.....",
+    "...KyCCeAaK.....",
+    "....KyCAaK......",
+    "....KyAaK.......",
+    ".....KAaK.......",
+    ".....KaK........",
+    "......K.........",
+    "................",
+    "................",
+]
+NOTE = [
+    "................",
+    "........KKKK....",
+    "........KyYK....",
+    "........KyyKK...",
+    "........KyKyK...",
+    "........KyK.K...",
+    "........KyK.....",
+    "........KyK.....",
+    "....KKKKKyK.....",
+    "...KYyyyAyK.....",
+    "...KyyyyAaK.....",
+    "...KyyyAaaK.....",
+    "....KAaaaK......",
+    ".....KKKK.......",
+    "................",
+    "................",
+]
+PAGE = [
+    "................",
+    "................",
+    "...KKKKKKKK.....",
+    "...KWWWWWWgK....",
+    "...KWGGGGWWgK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGGGWWK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGGWWWK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGWWWWK...",
+    "...KWWWWWWWgK...",
+    "...KKKKKKKKKK...",
+    "................",
+    "................",
+    "................",
+]
+KITE = [
+    "................",
+    ".......KK.......",
+    "......KeEK......",
+    ".....KeEECK.....",
+    "....KeeECCcK....",
+    "...KeeeECCccK...",
+    "....KeeCCccK....",
+    ".....KeCCcK.....",
+    "......KCcK......",
+    ".......KK.......",
+    "........K.......",
+    ".......C........",
+    "........C.......",
+    ".......C........",
+    "........c.......",
+    "................",
+]
+
+# --------------------------------------------------------------------------- NPC placeholder (16x24, 2 frames)
+NPC_BASE = [
+    "................",
+    "................",
+    "......KKKK......",
+    ".....KGggGK.....",
+    "....KGggggGK....",
+    "...KGGggggGGK...",
+    "..KKKKKKKKKKKK..",
+    "....KWWWWWWK....",
+    "....KWKWWKWK....",
+    "....KWWWWWWK....",
+    "...KK333333KK...",
+    "..K3343333433K..",
+    "..K3433333343K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K4333333334K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K4333333334K..",
+    "..KKKKKKKKKKKK..",
+    "...KK......KK...",
+    "................",
+]
+NPC_BLINK = NPC_BASE[:8] + ["....KWWWWWWK...."] + NPC_BASE[9:]
+
+
+def make_shrine():
+    """A small bronze bell hanging in a mossy stone arch (16x32)."""
+    img = Img(16, 32)
+    for y in range(32):
+        for x in range(16):
+            pillar = x in (0, 1, 2, 3, 12, 13, 14, 15) and y >= 6
+            arch = y < 8 and abs(x - 7.5) < 7.5 and math.hypot((x - 7.5) / 7.5, (y - 8) / 7) <= 1 and math.hypot((x - 7.5) / 5, (y - 8) / 5) > 1
+            base = y >= 27 and 0 <= x <= 15
+            if base:
+                img.set(x, y, "K" if y in (27, 31) or x in (0, 15) else ("3" if (x + y) % 5 else "4"))
+            elif pillar or arch:
+                img.set(x, y, "3" if hsh(x, y, 11) > 0.2 else "4")
+    # outline the stone
+    solid = [[img.px[y][x] is not None for x in range(16)] for y in range(32)]
+    for y in range(32):
+        for x in range(16):
+            if solid[y][x]:
+                edge = any(not (0 <= x + dx < 16 and 0 <= y + dy < 32 and solid[y + dy][x + dx]) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                if edge:
+                    img.set(x, y, "K")
+    # moss on the arch top
+    for x in range(3, 13):
+        for y in range(32):
+            if solid[y][x]:
+                img.set(x, max(0, y - 1), "M" if hsh(x, y, 4) > 0.3 else "n")
+                break
+    # rope + bell
+    for y in range(5, 10):
+        img.set(7, y, "a")
+    bell = [
+        "...KKK...",
+        "..KyyAK..",
+        ".KyYyAaK.",
+        ".KyyyAaK.",
+        ".KyyAAaK.",
+        "KyyyAAaaK",
+        "KKKKKKKKK",
+        "....K....",
+    ]
+    for dy, r in enumerate(bell):
+        for dx, k in enumerate(r):
+            img.set(3 + dx, 10 + dy, k)
+    return img
+
+
 # --------------------------------------------------------------------------- font (5x7, uppercase)
 GLYPHS = {
     "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
@@ -788,6 +937,10 @@ if __name__ == "__main__":
     props.save(S("sprites", "props.png"))
     door = sheet([make_door(False), make_door(True)])
     door.save(S("sprites", "door.png"))
+    collectibles = sheet([from_grid(g) for g in (SHARD, NOTE, PAGE, KITE)])
+    collectibles.save(S("sprites", "collectibles.png"))
+    make_shrine().save(S("sprites", "shrine.png"))
+    sheet([from_grid(NPC_BASE), from_grid(NPC_BLINK)]).save(S("sprites", "npc.png"))
 
     # editor tileset for Tiled: one tile per terrain type (the game autotiles the ground itself)
     # order = Tiled tile ids 0..4: ground, one-way platform, spikes, pressure plate, door
@@ -831,6 +984,9 @@ if __name__ == "__main__":
         },
         "props": {"file": "sprites/props.png", "frame": [16, 16], "order": [n for n, _ in prop_list]},
         "door": {"file": "sprites/door.png", "frame": [16, 32], "order": ["closed", "open"]},
+        "collectibles": {"file": "sprites/collectibles.png", "frame": [16, 16], "order": ["shard", "note", "page", "moment"]},
+        "shrine": {"file": "sprites/shrine.png", "frame": [16, 32]},
+        "npc": {"file": "sprites/npc.png", "frame": [16, 24], "order": ["idle", "blink"], "_note": "placeholder for every NPC until each gets its own sprite"},
         "ui": {"file": "ui/ui.png", "rects": ui_rects},
         "font": {"file": "ui/font.png", "glyph": [5, 7], "advance": 6, "order": FONT_ORDER, "uppercaseOnly": True},
         "title": {"file": "ui/title.png", "size": [title.w, title.h]},

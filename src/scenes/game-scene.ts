@@ -1,6 +1,8 @@
 import { C, COLORS, HEIGHT, STEP, WIDTH, manifest } from "../config";
 import { Echo } from "../game/echo";
-import { Level, overlaps, type Point } from "../game/level";
+import { Level, overlaps, type Entity, type Point } from "../game/level";
+import { Progress, type Ability, type CollectibleKind } from "../game/progress";
+import { keyName } from "../engine/input";
 import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
@@ -27,6 +29,21 @@ const REWIND_ANIM = 0.32; // seconds of the reverse playback
 const REWIND_COOLDOWN = 0.6;
 const SLOTS_HUD_TIME = 2;
 const ROOM_NAME_TIME = 2.2;
+const BANNER_TIME = 3.5;
+const POPUP_TIME = 2.2;
+const TALK_RANGE = 36; // px: NPC / shrine names show up within this distance
+
+const COLLECTIBLE_FRAME: Record<CollectibleKind, number> = { shard: 0, note: 1, page: 2, moment: 3 };
+const COLLECTIBLE_NAME: Record<CollectibleKind, string> = { shard: "BELL SHARD", note: "RESONANT NOTE", page: "LOST PAGE", moment: "LUMI'S MOMENT" };
+
+/** What a Bell Shard can unlock ("unlocks" property in Tiled). */
+const UNLOCK_TEXT: Record<string, { title: string; hint: (keys: Record<string, string>) => string }> = {
+  dash: { title: "DASH", hint: (k) => `PRESS ${k.dash} TO DASH, IN ANY DIRECTION` },
+  rewind: { title: "REWIND", hint: (k) => `PRESS ${k.rewind} TO GO BACK 2 SECONDS AND LEAVE AN ECHO` },
+  doubleJump: { title: "DOUBLE JUMP", hint: (k) => `PRESS ${k.jump} AGAIN IN THE AIR` },
+  wallJump: { title: "WALL JUMP", hint: () => "JUMP WHILE SLIDING DOWN A WALL" },
+  echo: { title: "ONE MORE ECHO", hint: () => "YOUR EYE CAN HOLD ANOTHER MOMENT" },
+};
 
 interface Rewinding {
   /** recorded moments, newest first */
@@ -44,6 +61,9 @@ interface Transition {
 
 export class GameScene implements Scene {
   private readonly world = new World(WORLD);
+  private readonly progress = new Progress();
+  private banner: { title: string; hint: string; t: number } | null = null;
+  private popup: { kind: CollectibleKind; t: number } | null = null;
   private current: RoomDef;
   private room: Room;
   private readonly fx = new Effects();
@@ -72,7 +92,7 @@ export class GameScene implements Scene {
     this.current = this.world.startRoom;
     this.room = new Room(this.current.level, this.current.maxEchoes);
     this.respawnPoint = this.current.level.spawn;
-    this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name));
+    this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name), (a) => this.progress.has(a));
     this.pauseMenu = new OptionList(
       ctx,
       [
@@ -103,6 +123,8 @@ export class GameScene implements Scene {
   /** A fresh run from the first room: checkpoints forgotten. */
   private startRun(): void {
     for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
+    this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
+    this.banner = this.popup = null;
     this.setRoom(this.world.startRoom);
     this.respawnPoint = this.level.spawn;
     this.restartRoom();
@@ -128,9 +150,14 @@ export class GameScene implements Scene {
     this.rewindCooldown = 0;
   }
 
+  /** Echoes allowed here: the room's limit, capped by what Iris's Eye can hold. */
+  private echoLimit(def: RoomDef): number {
+    return Math.min(def.maxEchoes, this.progress.echoSlots);
+  }
+
   private setRoom(def: RoomDef): void {
     this.current = def;
-    this.room = new Room(def.level, def.maxEchoes);
+    this.room = new Room(def.level, this.echoLimit(def));
     this.player.setCollider(this.room);
     this.resetRoom();
     this.roomNameTimer = ROOM_NAME_TIME;
@@ -158,6 +185,8 @@ export class GameScene implements Scene {
     }
 
     this.roomNameTimer = Math.max(0, this.roomNameTimer - dt);
+    if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
+    if (this.popup && (this.popup.t -= dt) <= 0) this.popup = null;
     if (this.transition) {
       this.updateTransition(dt);
       return;
@@ -175,8 +204,8 @@ export class GameScene implements Scene {
     this.rewindCooldown = Math.max(0, this.rewindCooldown - dt);
     this.slotsHud = Math.max(0, this.slotsHud - dt);
 
-    if (input.justPressed("rewind") && !p.dead) {
-      if (this.history.length >= MIN_HISTORY && this.rewindCooldown <= 0) {
+    if (input.justPressed("rewind") && !p.dead && this.progress.has("rewind")) {
+      if (this.history.length >= MIN_HISTORY && this.rewindCooldown <= 0 && this.room.maxEchoes > 0) {
         this.startRewind();
         return;
       }
@@ -194,6 +223,7 @@ export class GameScene implements Scene {
       this.history.push(p.snapshot());
       if (this.history.length > HISTORY) this.history.shift();
       this.checkCheckpoints();
+      this.checkCollectibles();
     }
     if (p.dead && !wasDead) {
       this.respawnTimer = RESPAWN_DELAY;
@@ -202,6 +232,7 @@ export class GameScene implements Scene {
     if (p.dead) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
+        this.progress.dropPending(); // what wasn't secured at a checkpoint goes back
         this.resetRoom();
         p.respawnAt(this.respawnPoint);
         this.ctx.sfx("respawn");
@@ -258,6 +289,7 @@ export class GameScene implements Scene {
     for (const c of this.level.checkpoints) {
       if (!overlaps(p.hitbox, Level.checkpointRect(c))) continue;
       p.refill();
+      this.securePending();
       if (c.active) continue;
       for (const r of this.world.rooms) for (const other of r.level.checkpoints) other.active = false;
       c.active = true;
@@ -265,6 +297,49 @@ export class GameScene implements Scene {
       this.ctx.sfx("checkpoint");
       this.fx.burst(c.x, c.y - 9, 18, { colors: [COLORS.C, COLORS.e, COLORS.E, COLORS.W], speed: 60, life: 0.6 });
     }
+  }
+
+  // ------------------------------------------------------------------ collectibles
+  private collectibleRect(e: Entity) {
+    return { x: e.x - 6, y: e.y - 15, w: 12, h: 12 };
+  }
+
+  private checkCollectibles(): void {
+    const p = this.player;
+    for (const e of this.level.entities) {
+      if (e.kind === "npc" || this.progress.taken(e.key)) continue;
+      if (!overlaps(p.hitbox, this.collectibleRect(e))) continue;
+      this.fx.burst(e.x, e.y - 9, 16, { colors: [COLORS.y, COLORS.Y, COLORS.W, COLORS.e], speed: 70, life: 0.5 });
+      if (e.kind === "shard") {
+        this.progress.secure(e.key, e.kind); // story items are kept at once
+        this.unlock(String(e.props.unlocks ?? ""));
+      } else {
+        this.progress.pending.push({ key: e.key, kind: e.kind });
+        this.ctx.sfx("echoAppear");
+      }
+    }
+  }
+
+  private unlock(what: string): void {
+    const text = UNLOCK_TEXT[what];
+    if (what === "echo") this.progress.echoSlots++;
+    else if (text) this.progress.unlock(what as Ability);
+    else console.warn(`Bell Shard with unknown "unlocks" value "${what}"`);
+    this.room.maxEchoes = this.echoLimit(this.current);
+    this.player.refill();
+    this.player.power = 1;
+    this.ctx.sfx("checkpoint");
+    if (this.ctx.settings.screenShake) this.shake = 0.15;
+    const b = this.ctx.settings.bindings;
+    const keys = { dash: keyName(b.dash), rewind: keyName(b.rewind), jump: keyName(b.jump) };
+    if (text) this.banner = { title: text.title, hint: text.hint(keys), t: BANNER_TIME };
+    this.popup = { kind: "shard", t: POPUP_TIME };
+  }
+
+  /** Reaching a checkpoint keeps the collectibles picked up since the last one. */
+  private securePending(): void {
+    const kinds = this.progress.securePending();
+    if (kinds.length) this.popup = { kind: kinds[kinds.length - 1], t: POPUP_TIME };
   }
 
   // ------------------------------------------------------------------ rewind
@@ -379,6 +454,7 @@ export class GameScene implements Scene {
       from.level.render(draw, camX - (from.x - this.current.x), camY - (from.y - this.current.y), WIDTH, HEIGHT);
     }
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
+    this.renderEntities(camX, camY);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
     this.fx.renderBehind(draw, camX, camY);
     if (this.rewinding) this.renderRewind(camX, camY);
@@ -389,8 +465,11 @@ export class GameScene implements Scene {
     const p = this.player;
     if (p.voidTime > 0 && !p.dead) draw.rect(0, 0, WIDTH, HEIGHT, C.void, Math.min(0.6, (p.voidTime / TUNING.voidGrace) * 0.6));
 
+    this.renderPending(camX, camY);
     this.renderSlots();
     this.renderRoomName();
+    this.renderPopup();
+    this.renderBanner();
     if (this.debug) this.renderDebug(camX, camY);
 
     if (this.paused) {
@@ -415,6 +494,64 @@ export class GameScene implements Scene {
     }
     const s = this.rewindSample(rw);
     draw.frame(draw.img.player, s.frame, s.x - 4 - camX, s.y - 4 - camY, { flip: s.facing < 0, row: 2 });
+  }
+
+  private renderEntities(camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    const p = this.player;
+    const near = (x: number, y: number) => Math.hypot(p.x + 4 - x, p.y + 6 - y) < TALK_RANGE;
+    for (const e of this.level.entities) {
+      if (e.kind === "npc") {
+        const blink = Math.floor(this.t * 2 + e.x) % 7 === 0 ? 1 : 0;
+        draw.frame(draw.img.npc, blink, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, flip: p.x + 4 < e.x });
+        if (near(e.x, e.y - 12)) draw.text(String(e.props.name ?? "???"), e.x - camX, e.y - 34 - camY, C.bone, { align: "center" });
+        continue;
+      }
+      if (this.progress.taken(e.key)) continue;
+      const bob = Math.round(Math.sin(this.t * 3 + e.x * 0.1) * 2);
+      draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[e.kind], e.x - 8 - camX, e.y - 18 + bob - camY);
+    }
+    for (const c of this.level.checkpoints) {
+      if (c.kind === "shrine" && near(c.x, c.y - 14)) draw.text("BELL SHRINE", c.x - camX, c.y - 42 - camY, C.gold, { align: "center" });
+    }
+  }
+
+  /** Collectibles not secured yet float above Iris until the next checkpoint. */
+  private renderPending(camX: number, camY: number): void {
+    const pending = this.progress.pending;
+    if (!pending.length || this.player.dead) return;
+    const { draw } = this.ctx;
+    pending.forEach((item, i) => {
+      const x = this.player.x + 4 - 8 + (i - (pending.length - 1) / 2) * 10;
+      const y = this.player.y - 18 + Math.round(Math.sin(this.t * 4 + i) * 1.5);
+      draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[item.kind], x - camX, y - camY, { alpha: 0.75 });
+    });
+  }
+
+  /** "+1 LOST PAGE  3" in the top-right corner. */
+  private renderPopup(): void {
+    if (!this.popup) return;
+    const { draw } = this.ctx;
+    const { kind, t } = this.popup;
+    const slide = Math.min(1, (POPUP_TIME - t) * 6, t * 3);
+    const x = WIDTH - 4 - Math.round(slide * 100);
+    draw.ctx.globalAlpha = slide;
+    draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[kind], x, 4);
+    draw.text(`${COLLECTIBLE_NAME[kind]} ${this.progress.count(kind)}`, x + 18, 9, C.bone);
+    draw.ctx.globalAlpha = 1;
+  }
+
+  /** Big centred text when an ability is unlocked. */
+  private renderBanner(): void {
+    if (!this.banner) return;
+    const { draw } = this.ctx;
+    const { title, hint, t } = this.banner;
+    const a = Math.min(1, (BANNER_TIME - t) * 4, t * 2);
+    draw.ctx.globalAlpha = a;
+    draw.rect(0, 52, WIDTH, 34, C.void, 0.7);
+    draw.text(title, WIDTH / 2, 58, C.echoLight, { align: "center" });
+    draw.text(hint, WIDTH / 2, 72, C.bone, { align: "center" });
+    draw.ctx.globalAlpha = 1;
   }
 
   /** Echo slots: cyan diamonds, shown for a moment after each rewind. */
@@ -468,6 +605,7 @@ export class GameScene implements Scene {
       `VX ${Math.round(p.vx)} VY ${Math.round(p.vy)}`,
       `DASH ${p.canDash ? "READY" : "USED"}  2ND JUMP ${p.canDoubleJump ? "READY" : "USED"}`,
       `ECHOES ${this.room.echoes.length}/${this.room.maxEchoes}  HISTORY ${(this.history.length * STEP).toFixed(1)}S`,
+      `ABILITIES ${[...this.progress.abilities].join(" ").toUpperCase() || "NONE"}`,
     ];
     lines.forEach((l, i) => draw.text(l, 4, 18 + i * 9, C.bone));
   }

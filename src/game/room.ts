@@ -16,8 +16,8 @@ export class Room implements Collider {
 
   constructor(
     readonly level: Level,
-    /** how many echoes can exist at once in this room */
-    readonly maxEchoes: number,
+    /** how many echoes can exist at once in this room (raised when Iris unlocks more slots) */
+    public maxEchoes: number,
   ) {}
 
   get spawn() {
