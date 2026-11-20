@@ -1,0 +1,90 @@
+{
+ "type": "world",
+ "onlyShowAdjacentMaps": false,
+ "maps": [
+  {
+   "fileName": "lanternrest.tmj",
+   "x": 0,
+   "y": 0,
+   "width": 480,
+   "height": 224
+  },
+  {
+   "fileName": "old_road.tmj",
+   "x": 480,
+   "y": 0,
+   "width": 576,
+   "height": 224
+  },
+  {
+   "fileName": "fence_steps.tmj",
+   "x": 1056,
+   "y": 0,
+   "width": 480,
+   "height": 224
+  },
+  {
+   "fileName": "orchard.tmj",
+   "x": 1536,
+   "y": 0,
+   "width": 640,
+   "height": 224
+  },
+  {
+   "fileName": "well_of_stars.tmj",
+   "x": 1792,
+   "y": 224,
+   "width": 320,
+   "height": 448
+  },
+  {
+   "fileName": "broken_mill.tmj",
+   "x": 2176,
+   "y": -192,
+   "width": 448,
+   "height": 384
+  },
+  {
+   "fileName": "lumis_field.tmj",
+   "x": 2624,
+   "y": -304,
+   "width": 576,
+   "height": 256
+  },
+  {
+   "fileName": "spike_hollow.tmj",
+   "x": 3200,
+   "y": -144,
+   "width": 512,
+   "height": 256
+  },
+  {
+   "fileName": "vale_shrine.tmj",
+   "x": 3712,
+   "y": -128,
+   "width": 384,
+   "height": 224
+  },
+  {
+   "fileName": "orchard_way.tmj",
+   "x": 4096,
+   "y": -160,
+   "width": 544,
+   "height": 224
+  },
+  {
+   "fileName": "millrace.tmj",
+   "x": 3904,
+   "y": 96,
+   "width": 736,
+   "height": 224
+  },
+  {
+   "fileName": "shard_of_motion.tmj",
+   "x": 4640,
+   "y": -160,
+   "width": 480,
+   "height": 384
+  }
+ ]
+}

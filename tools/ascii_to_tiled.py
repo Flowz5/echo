@@ -225,12 +225,13 @@ def room_map(room):
     }
 
 
-def main():
+def write_world(world_name, rooms):
+    """Writes the tileset, one .tmj per room and <world_name>.world."""
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "terrain.tsj"), "w") as f:
         json.dump(tileset(), f, indent=1)
     world = {"type": "world", "onlyShowAdjacentMaps": False, "maps": []}
-    for room in ROOMS:
+    for room in rooms:
         m = room_map(room)
         with open(os.path.join(OUT, f"{room['name']}.tmj"), "w") as f:
             json.dump(m, f, indent=1)
@@ -241,9 +242,13 @@ def main():
             "width": m["width"] * TILE,
             "height": m["height"] * TILE,
         })
-    with open(os.path.join(OUT, f"{WORLD}.world"), "w") as f:
+    with open(os.path.join(OUT, f"{world_name}.world"), "w") as f:
         json.dump(world, f, indent=1)
-    print(f"wrote {len(ROOMS)} rooms + {WORLD}.world to {os.path.normpath(OUT)}")
+    print(f"wrote {len(rooms)} rooms + {world_name}.world to {os.path.normpath(OUT)}")
+
+
+def main():
+    write_world(WORLD, ROOMS)
 
 
 if __name__ == "__main__":

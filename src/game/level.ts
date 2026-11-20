@@ -42,7 +42,7 @@ export type Props = Record<string, string | number | boolean>;
 export interface Entity extends Point {
   /** unique across the game: "<room>:<tiled object id>" */
   key: string;
-  kind: CollectibleKind | "npc";
+  kind: CollectibleKind | "npc" | "text" | "lingering";
   props: Props;
 }
 

@@ -9,8 +9,10 @@ import { parseAbilities, type Ability } from "./progress";
  * Tiled conventions (see assets/levels/README.md):
  *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door)
  *   - object layer "objects" with point objects of class:
- *       spawn, checkpoint, shrine, shard, note, page, moment, npc
+ *       spawn, checkpoint, shrine, shard, note, page, moment, npc, text, lingering
  *   - optional map property "echoes" (int): max echoes in the room
+ *   - optional map property "title" (string): name shown when entering the room
+ *   - optional map property "indoor" (bool): a stone back wall instead of the night sky
  *   - first room only: "abilities" (string, e.g. "doubleJump, wallJump") and "echoSlots" (int)
  *     = what Iris starts the chapter with
  */
@@ -58,6 +60,10 @@ interface TiledWorld {
 
 export interface RoomDef {
   name: string;
+  /** shown when entering the room */
+  title: string;
+  /** stone back wall instead of the sky */
+  indoor: boolean;
   level: Level;
   /** world position in pixels */
   x: number;
@@ -114,7 +120,7 @@ function parseMap(name: string, json: string): ParsedMap {
       if (kind === "spawn") spawns.push(p);
       else if (kind === "checkpoint") checkpoints.push({ ...p, kind: "crystal" });
       else if (kind === "shrine") checkpoints.push({ ...p, kind: "shrine" });
-      else if (kind === "npc" || (COLLECTIBLES as readonly string[]).includes(kind ?? ""))
+      else if (kind === "npc" || kind === "text" || kind === "lingering" || (COLLECTIBLES as readonly string[]).includes(kind ?? ""))
         entities.push({ ...p, key: `${name}:${o.id}`, kind: kind as Entity["kind"], props: props(o.properties) });
       else if (kind) console.warn(`${name}: unknown object class "${kind}"`);
     }
@@ -147,7 +153,8 @@ export class World {
         this.startEchoSlots = typeof roomProps.echoSlots === "number" ? roomProps.echoSlots : 0;
       }
       if (level.width < 320 || level.height < 180) console.warn(`Room ${name} is smaller than the screen (min 20x12 tiles)`);
-      return { name, level, x: m.x, y: m.y, maxEchoes };
+      const title = typeof roomProps.title === "string" ? roomProps.title : name.replace(/[-_]/g, " ");
+      return { name, title, indoor: roomProps.indoor === true, level, x: m.x, y: m.y, maxEchoes };
     });
     // edges look into the neighbouring rooms
     for (const room of this.rooms) {

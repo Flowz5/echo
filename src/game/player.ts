@@ -63,6 +63,7 @@ export const TUNING = {
   wallJumpSoftMult: 0.3, // …at this fraction of the normal air acceleration
   wallCoyote: 0.08, // can still wall jump this long after leaving a wall
   wallCheck: 2, // px: how close to a wall counts as touching it
+  wallChainTime: 0.7, // after a wall jump, touching the next wall is enough to wall jump again
 
   platformDropTime: 0.2,
   voidGrace: 0.5, // seconds of falling below the room before death: time to rewind
@@ -139,6 +140,8 @@ export class Player {
   private wallSliding = false;
   private wallDir: -1 | 0 | 1 = 0; // wall touched last (for the wall coyote time)
   private wallCoyote = 0;
+  private wallChain = 0; // time left in a wall-jump chain (chimneys)
+  private touchedSlide = false; // the wall in the coyote window was slid on, not just brushed
   private forceMoveTimer = 0;
   private forceMoveDir = 0;
   private softLockTimer = 0;
@@ -178,7 +181,8 @@ export class Player {
     this.canDash = this.canDoubleJump = true;
     this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
     this.wallSliding = false;
-    this.wallCoyote = this.forceMoveTimer = this.softLockTimer = 0;
+    this.wallCoyote = this.forceMoveTimer = this.softLockTimer = this.wallChain = 0;
+    this.touchedSlide = false;
     this.voidTime = 0;
     this.power = 0;
     this.scaleX = 0.6; // pop in
@@ -229,6 +233,7 @@ export class Player {
     this.dropTimer = Math.max(0, this.dropTimer - dt);
     this.coyote = Math.max(0, this.coyote - dt);
     this.wallCoyote = Math.max(0, this.wallCoyote - dt);
+    this.wallChain = Math.max(0, this.wallChain - dt);
     if (this.forceMoveTimer > 0 && this.forceMoveTimer - dt <= 0) this.softLockTimer = TUNING.wallJumpSoftLock;
     this.forceMoveTimer = Math.max(0, this.forceMoveTimer - dt);
     this.softLockTimer = Math.max(0, this.softLockTimer - dt);
@@ -310,11 +315,13 @@ export class Player {
     if (right || left) {
       this.wallDir = right && (!left || mx >= 0) ? 1 : -1;
       this.wallCoyote = T.wallCoyote;
+      this.touchedSlide = false;
     }
     const pushing = (mx > 0 && right) || (mx < 0 && left);
     const touching = this.level.solidAt({ ...this.hitbox, x: this.x + mx });
     if (pushing && touching && this.vy > 0) {
       this.wallSliding = true;
+      this.touchedSlide = true;
       this.facing = mx as 1 | -1;
       this.canDoubleJump = true; // touching a wall gives the double jump back
       this.slideFxTimer -= dt;
@@ -332,6 +339,16 @@ export class Player {
     }
   }
 
+  /**
+   * Near a wall, a jump is a wall jump when Iris slides on it, chains wall jumps,
+   * is already coming down, or has no double jump left. Rising past a wall with
+   * the double jump available (e.g. jumping up onto a ledge) keeps the double jump,
+   * so she isn't kicked away from where she wants to go.
+   */
+  private wantsWallJump(): boolean {
+    return this.wallSliding || this.touchedSlide || this.wallChain > 0 || this.vy >= 0 || !this.canDoubleJump || !this.can("doubleJump");
+  }
+
   private wallJump(mx: number): void {
     const T = TUNING;
     const away = -this.wallDir as 1 | -1;
@@ -345,6 +362,7 @@ export class Player {
     this.forceMoveTimer = neutral ? T.wallJumpLock * 0.5 : T.wallJumpLock;
     this.softLockDir = this.wallDir;
     this.softLockTimer = 0;
+    this.wallChain = T.wallChainTime;
     this.wallSliding = false;
     this.wallCoyote = 0;
     this.sound("wallJump");
@@ -372,7 +390,7 @@ export class Player {
         this.dust(6);
         this.sound("jump");
         this.stretch(0.7, 1.35);
-      } else if (this.wallCoyote > 0) {
+      } else if (this.wallCoyote > 0 && this.wantsWallJump()) {
         this.wallJump(mx);
       } else if (this.canDoubleJump && this.can("doubleJump")) {
         this.canDoubleJump = false;
@@ -437,6 +455,7 @@ export class Player {
     this.canDoubleJump = s.canDoubleJump;
     this.dashTimer = this.varJumpTimer = this.buffer = this.forceMoveTimer = this.wallCoyote = 0;
     this.wallSliding = false;
+    this.dead = false;
     this.voidTime = 0;
     this.power = 1;
     this.stretch(0.7, 1.35);
