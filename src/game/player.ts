@@ -4,49 +4,68 @@ import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
 import type { Level, Rect } from "./level";
 import type { Effects } from "./particles";
+import { Scarf } from "./scarf";
 
 /**
  * Movement tuning. Units: pixels and seconds. One tile = 16 px.
  * Tweak these to change the feel; everything else reads from here.
  */
 export const TUNING = {
-  runSpeed: 96,
-  groundAccel: 1000,
-  groundDecel: 1400,
-  airAccel: 760,
-  airDecel: 480,
+  // running
+  runSpeed: 100,
+  groundAccel: 900,
+  groundDecel: 1250,
+  turnAccel: 1900, // reversing direction on the ground is extra snappy
+  airAccel: 720,
+  airDecel: 320,
+  overspeedDecel: 260, // how fast extra speed (after a dash) bleeds off in the air
 
-  gravity: 1100,
-  maxFall: 250,
-  fastFall: 340, // holding down
-  apexThreshold: 45, // |vy| under this while holding jump = floatier apex
-  apexGravityMult: 0.5,
+  // gravity: lighter going up, heavier coming down = floaty rise, punchy fall
+  gravityUp: 950,
+  gravityDown: 1350,
+  apexThreshold: 40, // |vy| under this while holding jump…
+  apexGravityMult: 0.5, // …halves gravity: a soft hang at the top of the jump
+  maxFall: 235,
+  fastFall: 330, // holding down
 
-  jumpSpeed: 300, // ≈ 2.5 tiles high
-  jumpCutMult: 0.45, // releasing jump early cuts the upward speed
-  doubleJumpSpeed: 270,
-  coyoteTime: 0.1, // can still jump this long after leaving a ledge
-  jumpBuffer: 0.12, // a jump pressed this early before landing still counts
-  cornerCorrection: 4, // px nudged around a ceiling corner when bonking it
+  // jumping: holding jump sustains the take-off speed for a short time,
+  // releasing just lets gravity take over (no abrupt cut)
+  jumpSpeed: 205,
+  varJumpTime: 0.11, // ≈ 2.8 tiles at full hold, ≈ 1.4 tiles on a tap
+  jumpHBoost: 24, // extra horizontal push when jumping while running
+  doubleJumpSpeed: 195,
+  doubleVarJumpTime: 0.08,
+  coyoteTime: 0.1,
+  jumpBuffer: 0.12,
+  cornerCorrection: 4,
 
-  dashSpeed: 290,
-  dashTime: 0.14,
-  dashEndMult: 0.5, // speed kept once the dash ends
-  dashCooldown: 0.2,
-  dashFreeze: 0.05, // tiny hit-stop when the dash starts
-  afterimageEvery: 0.025,
+  // dashing
+  dashSpeed: 265,
+  dashTime: 0.15,
+  dashEase: 0.4, // the dash slows down by this fraction towards its end
+  dashEndSpeed: 130, // horizontal speed kept after a dash (momentum)
+  dashUpEndSpeed: 110, // upward speed kept after an upward dash
+  dashCooldown: 0.18,
+  dashFreeze: 0.02,
+  afterimageEvery: 0.03,
 
   platformDropTime: 0.2,
 };
 
 const ANIM = manifest.player.animations;
-const FPS = manifest.player.fps;
+const RUN_STRIDE = 7; // px travelled per run frame (keeps the legs in sync with speed)
 
 /** Hitbox inside the 16x16 sprite: 8 wide, 12 tall, feet on the sprite's bottom row. */
 const HB_W = 8;
 const HB_H = 12;
 const SPRITE_OX = -4;
 const SPRITE_OY = HB_H - 16;
+
+/** Collar position inside each player frame (facing right), where the scarf tail starts. */
+export function scarfAnchor(frame: number): { x: number; y: number } {
+  const down = frame === ANIM.idle[1] || frame === ANIM.run[1] || frame === ANIM.run[3];
+  return { x: frame === ANIM.dash[0] ? 5 : 4, y: down ? 10 : 9 };
+}
 
 export type PlayerState = "idle" | "run" | "jump" | "fall" | "dash";
 
@@ -72,7 +91,8 @@ export class Player {
   private coyote = 0;
   private buffer = 0;
   private jumpHeld = false;
-  private jumpCut = false;
+  private varJumpTimer = 0;
+  private varJumpSpeed = 0;
   private dashTimer = 0;
   private dashCooldown = 0;
   private dashDirX = 0;
@@ -80,6 +100,11 @@ export class Player {
   private afterimageTimer = 0;
   private dropTimer = 0;
   private animTime = 0;
+  private runDistance = 0;
+  private dustDistance = 0;
+  private scaleX = 1;
+  private scaleY = 1;
+  private readonly scarf = new Scarf();
 
   constructor(
     private readonly level: Level,
@@ -97,7 +122,11 @@ export class Player {
     this.facing = 1;
     this.dead = false;
     this.canDash = this.canDoubleJump = true;
-    this.dashTimer = this.dashCooldown = this.buffer = this.coyote = 0;
+    this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
+    this.scaleX = 0.6; // pop in
+    this.scaleY = 1.4;
+    const a = this.scarfWorldAnchor();
+    this.scarf.reset(a.x, a.y, this.facing);
   }
 
   get hitbox(): Rect {
@@ -133,72 +162,102 @@ export class Player {
     if (this.grounded) {
       this.coyote = T.coyoteTime;
       this.canDoubleJump = true;
-      if (!this.dashing && this.dashCooldown <= 0) this.canDash = true;
+      if (!this.dashing && this.dashCooldown <= 0 && !this.canDash) {
+        this.canDash = true;
+        this.fx.burst(this.x + HB_W / 2, this.y + 4, 4, { colors: [COLORS.P, COLORS.q], speed: 30, life: 0.25 });
+      }
     }
 
     // ---- dash
     if (input.justPressed("dash") && this.canDash && this.dashCooldown <= 0) this.startDash(mx, my);
 
     if (this.dashing) {
-      this.dashTimer -= dt;
-      this.afterimageTimer -= dt;
-      if (this.afterimageTimer <= 0) {
-        this.afterimageTimer = T.afterimageEvery;
-        this.fx.afterimage(this.x + SPRITE_OX, this.y + SPRITE_OY, this.frame(), this.facing < 0);
-      }
-      if (this.dashTimer <= 0) {
-        this.vx *= T.dashEndMult;
-        this.vy *= this.dashDirY < 0 ? T.dashEndMult : 1;
-      }
+      this.updateDash(dt);
     } else {
-      // ---- run
-      const target = mx * T.runSpeed;
-      const accel = this.grounded ? (mx !== 0 ? T.groundAccel : T.groundDecel) : mx !== 0 ? T.airAccel : T.airDecel;
-      // keep extra speed (e.g. after a dash) in the air when pushing the same way
-      const keepMomentum = !this.grounded && mx !== 0 && Math.sign(this.vx) === mx && Math.abs(this.vx) > T.runSpeed;
-      this.vx = approach(this.vx, target, (keepMomentum ? T.airDecel * 0.5 : accel) * dt);
-      if (mx !== 0) this.facing = mx as 1 | -1;
-
-      // ---- jumps
-      if (this.buffer > 0) {
-        if (this.grounded && my > 0 && this.level.platformBelow(this.x, HB_W, this.y + HB_H) && !this.level.solidAt({ ...this.hitbox, y: this.y + 1 })) {
-          this.dropTimer = T.platformDropTime; // down + jump drops through one-way platforms
-          this.buffer = 0;
-        } else if (this.coyote > 0) {
-          this.jump(T.jumpSpeed);
-          this.dust(6);
-          this.sound("jump");
-        } else if (this.canDoubleJump) {
-          this.canDoubleJump = false;
-          this.jump(T.doubleJumpSpeed);
-          this.sound("doubleJump");
-          this.fx.burst(this.x + HB_W / 2, this.y + HB_H, 8, { colors: [COLORS.P, COLORS.q, COLORS.W], speed: 60, angle: Math.PI / 2, spread: Math.PI * 0.9, life: 0.3 });
-        }
-      }
-      if (this.vy < 0 && !this.jumpHeld && !this.jumpCut) {
-        this.vy *= T.jumpCutMult;
-        this.jumpCut = true;
-      }
-
-      // ---- gravity
-      const apex = Math.abs(this.vy) < T.apexThreshold && this.jumpHeld;
-      const g = T.gravity * (apex ? T.apexGravityMult : 1);
-      const maxFall = my > 0 ? T.fastFall : T.maxFall;
-      this.vy = approach(this.vy, maxFall, g * dt);
+      this.updateRun(dt, mx);
+      this.updateJump(my);
+      this.updateGravity(dt, my);
     }
 
     // ---- move
-    const landingSpeed = this.vy;
+    const fallSpeed = this.vy;
     this.moveX(this.vx * dt);
     this.moveY(this.vy * dt);
 
-    if (!wasGrounded && this.onGround() && landingSpeed > 120) {
-      this.dust(Math.round(landingSpeed / 40));
-      this.sound("land");
-    }
+    if (!wasGrounded && this.onGround()) this.land(fallSpeed);
+    if (this.grounded && Math.abs(this.vx) > 8) this.runEffects(Math.abs(this.vx * dt));
+
+    // ---- squash & stretch eases back to normal
+    const k = 1 - Math.exp(-dt * 14);
+    this.scaleX += (1 - this.scaleX) * k;
+    this.scaleY += (1 - this.scaleY) * k;
+
+    const a = this.scarfWorldAnchor();
+    this.scarf.update(dt, a.x, a.y, this.facing, Math.hypot(this.vx, this.vy));
 
     // ---- death
     if (this.level.hazardAt(this.hitbox) || this.y > this.level.height + 24) this.die();
+  }
+
+  private updateRun(dt: number, mx: number): void {
+    const T = TUNING;
+    const target = mx * T.runSpeed;
+    let accel: number;
+    if (this.grounded) {
+      const turning = mx !== 0 && this.vx !== 0 && Math.sign(this.vx) !== mx;
+      accel = mx === 0 ? T.groundDecel : turning ? T.turnAccel : T.groundAccel;
+      if (turning && Math.abs(this.vx) > 60) this.skid();
+    } else if (mx !== 0 && Math.sign(this.vx) === mx && Math.abs(this.vx) > T.runSpeed) {
+      accel = T.overspeedDecel; // keep dash momentum in the air
+    } else {
+      accel = mx !== 0 ? T.airAccel : T.airDecel;
+    }
+    this.vx = approach(this.vx, target, accel * dt);
+    if (mx !== 0) this.facing = mx as 1 | -1;
+  }
+
+  private updateJump(my: number): void {
+    const T = TUNING;
+    if (this.buffer > 0) {
+      const onPlatform =
+        this.grounded && my > 0 && this.level.platformBelow(this.x, HB_W, this.y + HB_H) && !this.level.solidAt({ ...this.hitbox, y: this.y + 1 });
+      if (onPlatform) {
+        this.dropTimer = T.platformDropTime; // down + jump drops through one-way platforms
+        this.buffer = 0;
+      } else if (this.coyote > 0) {
+        this.jump(T.jumpSpeed, T.varJumpTime);
+        this.vx += Math.sign(this.vx) * T.jumpHBoost * Math.min(1, Math.abs(this.vx) / T.runSpeed);
+        this.dust(6);
+        this.sound("jump");
+        this.stretch(0.7, 1.35);
+      } else if (this.canDoubleJump) {
+        this.canDoubleJump = false;
+        this.jump(T.doubleJumpSpeed, T.doubleVarJumpTime);
+        this.sound("doubleJump");
+        this.stretch(0.75, 1.3);
+        this.fx.burst(this.x + HB_W / 2, this.y + HB_H, 10, {
+          colors: [COLORS.P, COLORS.q, COLORS.W],
+          speed: 70,
+          angle: Math.PI / 2,
+          spread: Math.PI * 0.8,
+          life: 0.35,
+        });
+      }
+    }
+    // sustain the take-off speed while jump is held
+    if (this.varJumpTimer > 0) {
+      if (this.jumpHeld) this.vy = Math.min(this.vy, -this.varJumpSpeed);
+      else this.varJumpTimer = 0;
+    }
+  }
+
+  private updateGravity(dt: number, my: number): void {
+    const T = TUNING;
+    this.varJumpTimer = Math.max(0, this.varJumpTimer - dt);
+    const apex = Math.abs(this.vy) < T.apexThreshold && this.jumpHeld;
+    const g = (this.vy < 0 ? T.gravityUp : T.gravityDown) * (apex ? T.apexGravityMult : 1);
+    const maxFall = my > 0 ? T.fastFall : T.maxFall;
+    this.vy = approach(this.vy, maxFall, g * dt);
   }
 
   private startDash(mx: number, my: number): void {
@@ -213,38 +272,78 @@ export class Player {
     this.vy = this.dashDirY * T.dashSpeed;
     this.dashTimer = T.dashTime;
     this.dashCooldown = T.dashCooldown;
+    this.varJumpTimer = 0;
     this.canDash = false;
     this.freeze = T.dashFreeze;
     this.sound("dash");
     this.afterimageTimer = 0;
     this.buffer = 0;
     if (dx !== 0) this.facing = Math.sign(dx) as 1 | -1;
-    this.fx.burst(this.x + HB_W / 2, this.y + HB_H / 2, 10, {
+    // stretch along the dash direction
+    const horiz = Math.abs(this.dashDirX);
+    this.stretch(1 + 0.4 * horiz - 0.3 * (1 - horiz), 1 - 0.3 * horiz + 0.4 * (1 - horiz));
+    this.fx.burst(this.x + HB_W / 2, this.y + HB_H / 2, 12, {
       colors: [COLORS.W, COLORS.P, COLORS.q],
-      speed: 70,
+      speed: 80,
       angle: Math.atan2(-this.dashDirY, -this.dashDirX),
-      spread: 1.2,
+      spread: 1.1,
       life: 0.3,
     });
   }
 
-  private jump(speed: number): void {
+  private updateDash(dt: number): void {
+    const T = TUNING;
+    this.dashTimer -= dt;
+    // ease out: full speed at the start, slowing towards the end
+    const progress = 1 - Math.max(0, this.dashTimer) / T.dashTime;
+    const speed = T.dashSpeed * (1 - T.dashEase * progress * progress);
+    this.vx = this.dashDirX * speed;
+    this.vy = this.dashDirY * speed;
+
+    this.afterimageTimer -= dt;
+    if (this.afterimageTimer <= 0) {
+      this.afterimageTimer = T.afterimageEvery;
+      this.fx.afterimage(this.x + SPRITE_OX, this.y + SPRITE_OY, this.frame(), this.facing < 0);
+    }
+    if (this.dashTimer <= 0) {
+      // hand momentum back to normal movement smoothly
+      if (Math.abs(this.vx) > T.dashEndSpeed) this.vx = Math.sign(this.vx) * T.dashEndSpeed;
+      if (this.vy < -T.dashUpEndSpeed) this.vy = -T.dashUpEndSpeed;
+    }
+  }
+
+  private jump(speed: number, varTime: number): void {
     this.vy = -speed;
+    this.varJumpSpeed = speed;
+    this.varJumpTimer = varTime;
     this.buffer = 0;
     this.coyote = 0;
-    this.jumpCut = false;
     this.grounded = false;
+  }
+
+  private land(fallSpeed: number): void {
+    const impact = Math.min(1, fallSpeed / TUNING.maxFall);
+    this.stretch(1 + 0.35 * impact, 1 - 0.3 * impact);
+    if (fallSpeed > 110) {
+      this.dust(3 + Math.round(impact * 6));
+      this.sound("land");
+    }
   }
 
   private die(): void {
     this.dead = true;
     this.sound("death");
-    this.fx.burst(this.x + HB_W / 2, this.y + HB_H / 2, 24, {
+    this.fx.burst(this.x + HB_W / 2, this.y + HB_H / 2, 26, {
       colors: [COLORS.W, COLORS.P, COLORS.q, COLORS.C],
       speed: 120,
       life: 0.6,
       gravity: 200,
     });
+  }
+
+  private stretch(sx: number, sy: number): void {
+    this.scaleX = sx;
+    this.scaleY = sy;
   }
 
   private dust(n: number): void {
@@ -256,6 +355,34 @@ export class Player {
       life: 0.35,
       gravity: 60,
     });
+  }
+
+  /** Little puffs behind the feet while running, in step with the legs. */
+  private runEffects(dist: number): void {
+    this.runDistance += dist;
+    this.dustDistance += dist;
+    if (this.dustDistance > 18) {
+      this.dustDistance = 0;
+      this.fx.burst(this.x + HB_W / 2 - this.facing * 3, this.y + HB_H - 1, 2, {
+        colors: [COLORS.g, COLORS.G],
+        speed: 18,
+        angle: this.facing > 0 ? -Math.PI * 0.85 : -Math.PI * 0.15,
+        spread: 0.8,
+        life: 0.3,
+      });
+    }
+  }
+
+  private skid(): void {
+    if (Math.random() < 0.5) {
+      this.fx.burst(this.x + HB_W / 2 + Math.sign(this.vx) * 3, this.y + HB_H - 1, 1, {
+        colors: [COLORS.g, COLORS.W],
+        speed: 30,
+        angle: -Math.PI / 2,
+        spread: 1.5,
+        life: 0.25,
+      });
+    }
   }
 
   // ------------------------------------------------------------------ collisions
@@ -294,6 +421,10 @@ export class Player {
       if (blocked) {
         if (step < 0 && this.cornerCorrect()) continue; // slid around a ceiling corner
         if (step > 0) this.grounded = true;
+        if (step < 0) {
+          this.varJumpTimer = 0;
+          this.stretch(1.15, 0.85); // head bonk
+        }
         this.vy = 0;
         this.remY = 0;
         if (this.dashing && step < 0) this.dashTimer = 0;
@@ -328,19 +459,30 @@ export class Player {
       case "fall":
         return ANIM.fall[0];
       case "run":
-        return ANIM.run[Math.floor(this.animTime * FPS.run) % ANIM.run.length];
+        return ANIM.run[Math.floor(this.runDistance / RUN_STRIDE) % ANIM.run.length];
       default:
-        return ANIM.idle[Math.floor(this.animTime * FPS.idle) % ANIM.idle.length];
+        return ANIM.idle[Math.floor(this.animTime * manifest.player.fps.idle) % ANIM.idle.length];
     }
+  }
+
+  private scarfWorldAnchor(): { x: number; y: number } {
+    const a = scarfAnchor(this.frame());
+    const lx = this.facing > 0 ? a.x : 15 - a.x;
+    // follow the squash so the scarf stays attached to the collar
+    const sy = this.y + SPRITE_OY + 16 - (16 - a.y) * this.scaleY;
+    const sx = this.x + SPRITE_OX + 8 + (lx - 8) * this.scaleX;
+    return { x: sx, y: sy };
   }
 
   render(draw: Draw, camX: number, camY: number): void {
     if (this.dead) return;
-    // row 0 = rose scarf (dash ready), row 1 = grey scarf (dash spent)
-    const row = this.canDash ? 0 : 1;
+    this.scarf.render(draw, camX, camY, !this.canDash);
+    // row 0 = rose collar (dash ready), row 1 = grey collar (dash spent)
     draw.frame(draw.img.player, this.frame(), this.x + SPRITE_OX - camX, this.y + SPRITE_OY - camY, {
       flip: this.facing < 0,
-      row,
+      row: this.canDash ? 0 : 1,
+      sx: this.scaleX,
+      sy: this.scaleY,
     });
   }
 }
