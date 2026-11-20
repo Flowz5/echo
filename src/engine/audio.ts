@@ -10,6 +10,7 @@ export type SfxName =
   | "pause"
   | "jump"
   | "doubleJump"
+  | "wallJump"
   | "dash"
   | "land"
   | "death"
@@ -121,6 +122,10 @@ export class AudioEngine {
       case "doubleJump":
         s.tone(out, { freq: 420, to: 980, t, dur: 0.12, wave: "pulse12", gain: 0.2 });
         s.tone(out, { freq: noteFreq("E6"), t: t + 0.05, dur: 0.08, wave: "triangle", gain: 0.25 });
+        break;
+      case "wallJump":
+        s.noise(out, { t, dur: 0.05, gain: 0.25, type: "highpass", freq: 2500 });
+        s.tone(out, { freq: 330, to: 700, t, dur: 0.1, wave: "pulse25", gain: 0.2 });
         break;
       case "dash":
         s.noise(out, { t, dur: 0.2, gain: 0.45, type: "bandpass", freq: 3200, to: 500, q: 1.5 });

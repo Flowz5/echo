@@ -29,6 +29,7 @@ npm run sprites    # regenerate placeholder sprites (python3, no deps)
 | Move | WASD (ZQSD on AZERTY) / arrows |
 | Jump / double jump | Space |
 | Dash (8 directions) | Left Shift |
+| Wall slide / wall jump | Push into a wall / Jump against a wall |
 | Fast fall / drop through platform | Down / Down + Jump |
 | Pause | Esc |
 | Debug overlay | F3 |

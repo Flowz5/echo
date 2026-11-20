@@ -49,6 +49,17 @@ export const TUNING = {
   dashFreeze: 0.02,
   afterimageEvery: 0.03,
 
+  // walls
+  wallSlideSpeed: 55, // max fall speed while sliding down a wall
+  wallSlideAccel: 700, // how fast Iris slows down when she grabs a wall while falling fast
+  wallJumpSpeed: 210,
+  wallJumpVarTime: 0.1,
+  wallJumpPush: 150, // horizontal kick away from the wall
+  wallJumpNeutralPush: 85, // jumping without pushing away: a smaller kick, to climb a single wall
+  wallJumpLock: 0.13, // seconds the kick direction overrides the stick (no instant re-grab)
+  wallCoyote: 0.08, // can still wall jump this long after leaving a wall
+  wallCheck: 2, // px: how close to a wall counts as touching it
+
   platformDropTime: 0.2,
 };
 
@@ -67,7 +78,7 @@ export function scarfAnchor(frame: number): { x: number; y: number } {
   return { x: frame === ANIM.dash[0] ? 5 : 4, y: down ? 10 : 9 };
 }
 
-export type PlayerState = "idle" | "run" | "jump" | "fall" | "dash";
+export type PlayerState = "idle" | "run" | "jump" | "fall" | "dash" | "wall";
 
 function approach(v: number, target: number, step: number): number {
   return v < target ? Math.min(v + step, target) : Math.max(v - step, target);
@@ -102,6 +113,12 @@ export class Player {
   private animTime = 0;
   private runDistance = 0;
   private dustDistance = 0;
+  private wallSliding = false;
+  private wallDir: -1 | 0 | 1 = 0; // wall touched last (for the wall coyote time)
+  private wallCoyote = 0;
+  private forceMoveTimer = 0;
+  private forceMoveDir = 0;
+  private slideFxTimer = 0;
   private scaleX = 1;
   private scaleY = 1;
   private readonly scarf = new Scarf();
@@ -123,6 +140,8 @@ export class Player {
     this.dead = false;
     this.canDash = this.canDoubleJump = true;
     this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
+    this.wallSliding = false;
+    this.wallCoyote = this.forceMoveTimer = 0;
     this.scaleX = 0.6; // pop in
     this.scaleY = 1.4;
     const a = this.scarfWorldAnchor();
@@ -139,6 +158,7 @@ export class Player {
 
   get state(): PlayerState {
     if (this.dashing) return "dash";
+    if (this.wallSliding) return "wall";
     if (!this.grounded) return this.vy < 0 ? "jump" : "fall";
     return Math.abs(this.vx) > 8 ? "run" : "idle";
   }
@@ -147,13 +167,15 @@ export class Player {
   update(dt: number, input: Input): void {
     if (this.dead) return;
     const T = TUNING;
-    const mx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
+    let mx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
     const my = (input.isDown("down") ? 1 : 0) - (input.isDown("up") ? 1 : 0);
     this.animTime += dt;
 
     this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     this.dropTimer = Math.max(0, this.dropTimer - dt);
     this.coyote = Math.max(0, this.coyote - dt);
+    this.wallCoyote = Math.max(0, this.wallCoyote - dt);
+    this.forceMoveTimer = Math.max(0, this.forceMoveTimer - dt);
     this.buffer = input.justPressed("jump") ? T.jumpBuffer : Math.max(0, this.buffer - dt);
     this.jumpHeld = input.isDown("jump");
 
@@ -172,10 +194,13 @@ export class Player {
     if (input.justPressed("dash") && this.canDash && this.dashCooldown <= 0) this.startDash(mx, my);
 
     if (this.dashing) {
+      this.wallSliding = false;
       this.updateDash(dt);
     } else {
+      if (this.forceMoveTimer > 0) mx = this.forceMoveDir; // just kicked off a wall
+      this.updateWalls(dt, mx);
       this.updateRun(dt, mx);
-      this.updateJump(my);
+      this.updateJump(mx, my);
       this.updateGravity(dt, my);
     }
 
@@ -216,7 +241,62 @@ export class Player {
     if (mx !== 0) this.facing = mx as 1 | -1;
   }
 
-  private updateJump(my: number): void {
+  /** Detects walls, handles sliding and remembers the wall for the wall-jump coyote time. */
+  private updateWalls(dt: number, mx: number): void {
+    const T = TUNING;
+    this.wallSliding = false;
+    if (this.grounded) return;
+    const right = this.level.solidAt({ ...this.hitbox, x: this.x + T.wallCheck });
+    const left = this.level.solidAt({ ...this.hitbox, x: this.x - T.wallCheck });
+    if (right || left) {
+      this.wallDir = right && (!left || mx >= 0) ? 1 : -1;
+      this.wallCoyote = T.wallCoyote;
+    }
+    const pushing = (mx > 0 && right) || (mx < 0 && left);
+    const touching = this.level.solidAt({ ...this.hitbox, x: this.x + mx });
+    if (pushing && touching && this.vy > 0) {
+      this.wallSliding = true;
+      this.facing = mx as 1 | -1;
+      this.canDoubleJump = true; // touching a wall gives the double jump back
+      this.slideFxTimer -= dt;
+      if (this.slideFxTimer <= 0) {
+        this.slideFxTimer = 0.07;
+        this.fx.burst(this.x + (mx > 0 ? HB_W : 0), this.y + 3, 1, {
+          colors: [COLORS.W, COLORS.g],
+          speed: 25,
+          angle: -Math.PI / 2 - mx * 0.6,
+          spread: 0.8,
+          life: 0.25,
+          gravity: 80,
+        });
+      }
+    }
+  }
+
+  private wallJump(mx: number): void {
+    const T = TUNING;
+    const away = -this.wallDir as 1 | -1;
+    const pushingAway = mx === away;
+    const push = pushingAway ? T.wallJumpPush : T.wallJumpNeutralPush;
+    this.jump(T.wallJumpSpeed, T.wallJumpVarTime);
+    this.vx = away * push;
+    this.facing = away;
+    this.forceMoveDir = away;
+    this.forceMoveTimer = pushingAway ? T.wallJumpLock : T.wallJumpLock * 0.6;
+    this.wallSliding = false;
+    this.wallCoyote = 0;
+    this.sound("wallJump");
+    this.stretch(0.75, 1.3);
+    this.fx.burst(this.x + (this.wallDir > 0 ? HB_W : 0), this.y + HB_H / 2, 7, {
+      colors: [COLORS.W, COLORS.g, COLORS.G],
+      speed: 55,
+      angle: away > 0 ? 0 : Math.PI,
+      spread: 1.4,
+      life: 0.3,
+    });
+  }
+
+  private updateJump(mx: number, my: number): void {
     const T = TUNING;
     if (this.buffer > 0) {
       const onPlatform =
@@ -224,12 +304,14 @@ export class Player {
       if (onPlatform) {
         this.dropTimer = T.platformDropTime; // down + jump drops through one-way platforms
         this.buffer = 0;
-      } else if (this.coyote > 0) {
+      } else if (this.coyote > 0 && !this.wallSliding) {
         this.jump(T.jumpSpeed, T.varJumpTime);
         this.vx += Math.sign(this.vx) * T.jumpHBoost * Math.min(1, Math.abs(this.vx) / T.runSpeed);
         this.dust(6);
         this.sound("jump");
         this.stretch(0.7, 1.35);
+      } else if (this.wallCoyote > 0) {
+        this.wallJump(mx);
       } else if (this.canDoubleJump) {
         this.canDoubleJump = false;
         this.jump(T.doubleJumpSpeed, T.doubleVarJumpTime);
@@ -256,6 +338,11 @@ export class Player {
     this.varJumpTimer = Math.max(0, this.varJumpTimer - dt);
     const apex = Math.abs(this.vy) < T.apexThreshold && this.jumpHeld;
     const g = (this.vy < 0 ? T.gravityUp : T.gravityDown) * (apex ? T.apexGravityMult : 1);
+    if (this.wallSliding) {
+      // grab the wall: brake smoothly down to the slide speed
+      this.vy = this.vy > T.wallSlideSpeed ? approach(this.vy, T.wallSlideSpeed, T.wallSlideAccel * dt) : approach(this.vy, T.wallSlideSpeed, g * dt);
+      return;
+    }
     const maxFall = my > 0 ? T.fastFall : T.maxFall;
     this.vy = approach(this.vy, maxFall, g * dt);
   }
@@ -458,6 +545,8 @@ export class Player {
         return ANIM.jump[0];
       case "fall":
         return ANIM.fall[0];
+      case "wall":
+        return ANIM.wall[0];
       case "run":
         return ANIM.run[Math.floor(this.runDistance / RUN_STRIDE) % ANIM.run.length];
       default:
