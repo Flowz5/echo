@@ -1,5 +1,5 @@
 import { loadImages } from "./engine/assets";
-import { blip } from "./engine/audio";
+import { AudioEngine } from "./engine/audio";
 import { Draw } from "./engine/draw";
 import { Input } from "./engine/input";
 import { startLoop } from "./engine/loop";
@@ -20,6 +20,8 @@ async function boot(): Promise<void> {
   const input = new Input(renderer, () => settings.bindings);
   const draw = new Draw(renderer.ctx, await loadImages());
   const scenes = new SceneManager(draw);
+  const audio = new AudioEngine();
+  audio.setVolumes(settings.music, settings.sfx);
 
   const ctx: Ctx = {
     draw,
@@ -28,8 +30,9 @@ async function boot(): Promise<void> {
     settings,
     scenes,
     bg: new MenuBackground(draw),
+    audio,
     save: () => saveSettings(settings),
-    sfx: (kind) => blip(kind, settings.sfx / 10),
+    sfx: (name) => audio.sfx(name),
   };
 
   scenes.register("main", new MainMenu(ctx));
@@ -38,6 +41,7 @@ async function boot(): Promise<void> {
   scenes.register("credits", new Credits(ctx));
   scenes.register("game", new GameScene(ctx));
   scenes.go("main");
+  if (import.meta.env.DEV) Object.assign(window, { __echo: ctx }); // console debugging
 
   canvas.focus();
   startLoop(

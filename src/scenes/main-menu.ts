@@ -19,6 +19,11 @@ export class MainMenu implements Scene {
     );
   }
 
+  enter(): void {
+    this.ctx.audio.setDucked(false);
+    this.ctx.audio.playMusic("menu");
+  }
+
   update(dt: number): void {
     this.t += dt;
     this.ctx.bg.update(dt);

@@ -7,6 +7,7 @@ export class SettingsMenu extends PanelScreen {
     const s = ctx.settings;
     const change = (fn: () => void) => () => {
       fn();
+      ctx.audio.setVolumes(s.music, s.sfx);
       ctx.save();
     };
     super(ctx, "SETTINGS", [
