@@ -1,5 +1,6 @@
-import { TILE } from "../config";
-import { Level, type Checkpoint, type Entity, type Point, type Props, type Tile } from "./level";
+import { TILE, manifest } from "../config";
+import { decorate } from "./decorate";
+import { Level, type Checkpoint, type Decor, type Entity, type Point, type Props, type Tile } from "./level";
 import { parseAbilities, type Ability } from "./progress";
 
 /**
@@ -9,7 +10,8 @@ import { parseAbilities, type Ability } from "./progress";
  * Tiled conventions (see assets/levels/README.md):
  *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door)
  *   - object layer "objects" with point objects of class:
- *       spawn, checkpoint, shrine, shard, note, page, moment, npc, text, lingering
+ *       spawn, checkpoint, shrine, shard, note, page, moment, npc, text, lingering,
+ *       deco (properties: sprite, layer = back/mid/front, flip)
  *   - optional map property "echoes" (int): max echoes in the room
  *   - optional map property "title" (string): name shown when entering the room
  *   - optional map property "indoor" (bool): a stone back wall instead of the night sky
@@ -111,6 +113,7 @@ function parseMap(name: string, json: string): ParsedMap {
   const spawns: Point[] = [];
   const checkpoints: (Point & { kind: Checkpoint["kind"] })[] = [];
   const entities: Entity[] = [];
+  const decor: Decor[] = [];
   for (const layer of map.layers) {
     if (layer.type !== "objectgroup") continue;
     for (const o of layer.objects ?? []) {
@@ -120,14 +123,20 @@ function parseMap(name: string, json: string): ParsedMap {
       if (kind === "spawn") spawns.push(p);
       else if (kind === "checkpoint") checkpoints.push({ ...p, kind: "crystal" });
       else if (kind === "shrine") checkpoints.push({ ...p, kind: "shrine" });
-      else if (kind === "npc" || kind === "text" || kind === "lingering" || (COLLECTIBLES as readonly string[]).includes(kind ?? ""))
+      else if (kind === "deco") {
+        const pr = props(o.properties);
+        const layer = pr.layer === "back" || pr.layer === "front" ? pr.layer : "mid";
+        decor.push({ ...p, sprite: String(pr.sprite ?? ""), layer, flip: pr.flip === true });
+      } else if (kind === "npc" || kind === "text" || kind === "lingering" || (COLLECTIBLES as readonly string[]).includes(kind ?? ""))
         entities.push({ ...p, key: `${name}:${o.id}`, kind: kind as Entity["kind"], props: props(o.properties) });
       else if (kind) console.warn(`${name}: unknown object class "${kind}"`);
     }
   }
   const mapProps = props(map.properties);
+  const level = new Level(rows, { name, spawns, checkpoints, entities });
+  level.decor = decor;
   return {
-    level: new Level(rows, { name, spawns, checkpoints, entities }),
+    level,
     maxEchoes: typeof mapProps.echoes === "number" ? mapProps.echoes : DEFAULT_ECHOES,
     props: mapProps,
   };
@@ -158,6 +167,8 @@ export class World {
     });
     // edges look into the neighbouring rooms
     for (const room of this.rooms) {
+      const known = manifest.decor.rects as Record<string, unknown>;
+      for (const d of room.level.decor) if (!known[d.sprite] && !known[`${d.sprite}_0`]) console.warn(`${room.name}: unknown decor sprite "${d.sprite}"`);
       room.level.outside = (tx, ty) => {
         const wx = room.x + tx * TILE + TILE / 2;
         const wy = room.y + ty * TILE + TILE / 2;
@@ -165,6 +176,11 @@ export class World {
         if (!other) return null;
         return other.level.ownTile(Math.floor((wx - other.x) / TILE), Math.floor((wy - other.y) / TILE));
       };
+    }
+    // procedural dressing once neighbours are known (ground tops at room edges look right)
+    for (const room of this.rooms) {
+      const handPlaced = room.level.decor.filter((d) => d.layer === "back");
+      room.level.decor = [...handPlaced, ...decorate(room.level, room.indoor), ...room.level.decor.filter((d) => d.layer !== "back")];
     }
   }
 

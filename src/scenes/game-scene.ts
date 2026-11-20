@@ -456,13 +456,17 @@ export class GameScene implements Scene {
       const from = this.transition.from;
       from.level.render(draw, camX - (from.x - this.current.x), camY - (from.y - this.current.y), WIDTH, HEIGHT);
     }
+    this.renderDecor("back", camX, camY);
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
+    this.renderDecor("mid", camX, camY);
     this.renderEntities(camX, camY);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
     this.fx.renderBehind(draw, camX, camY);
     if (this.rewinding) this.renderRewind(camX, camY);
     else this.player.render(draw, camX, camY);
+    this.renderDecor("front", camX, camY);
     this.fx.renderFront(draw, camX, camY);
+    this.renderAmbient(camX, camY);
 
     // falling into the void: the screen dims, there's still time to rewind
     const p = this.player;
@@ -512,7 +516,7 @@ export class GameScene implements Scene {
         if (a > 0) {
           draw.ctx.globalAlpha = a;
           const text = String(e.props.text ?? "").replace(/\{(\w+)\}/g, (_, k: string) => keys[k] ?? k.toUpperCase());
-          draw.text(text, e.x - camX, e.y - camY, C.bone, { align: "center" });
+          this.label(text, e.x - camX, e.y - camY, C.bone);
           draw.ctx.globalAlpha = 1;
         }
         continue;
@@ -521,13 +525,13 @@ export class GameScene implements Scene {
         // a villager frozen in the Stilling: a faint echo with a thought
         const shimmer = 0.4 + 0.1 * Math.sin(this.t * 2 + e.x);
         draw.frame(draw.img.npc, 0, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, alpha: shimmer, flip: e.props.flip === true });
-        if (near(e.x, e.y - 12)) draw.text(String(e.props.text ?? "..."), e.x - camX, e.y - 34 - camY, C.echoLight, { align: "center" });
+        if (near(e.x, e.y - 12)) this.label(String(e.props.text ?? "..."), e.x - camX, e.y - 34 - camY, C.echoLight);
         continue;
       }
       if (e.kind === "npc") {
         const blink = Math.floor(this.t * 2 + e.x) % 7 === 0 ? 1 : 0;
         draw.frame(draw.img.npc, blink, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, flip: p.x + 4 < e.x });
-        if (near(e.x, e.y - 12)) draw.text(String(e.props.name ?? "???"), e.x - camX, e.y - 34 - camY, C.bone, { align: "center" });
+        if (near(e.x, e.y - 12)) this.label(String(e.props.name ?? "???"), e.x - camX, e.y - 34 - camY, C.bone);
         continue;
       }
       if (this.progress.taken(e.key)) continue;
@@ -535,8 +539,65 @@ export class GameScene implements Scene {
       draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[e.kind], e.x - 8 - camX, e.y - 18 + bob - camY);
     }
     for (const c of this.level.checkpoints) {
-      if (c.kind === "shrine" && near(c.x, c.y - 14)) draw.text("BELL SHRINE", c.x - camX, c.y - 42 - camY, C.gold, { align: "center" });
+      if (c.kind === "shrine" && near(c.x, c.y - 14)) this.label("BELL SHRINE", c.x - camX, c.y - 42 - camY, C.gold);
     }
+  }
+
+  /** Decorations of one layer (only those on screen). */
+  private renderDecor(layer: "back" | "mid" | "front", camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    for (const d of this.level.decor) {
+      if (d.layer !== layer) continue;
+      const sx = d.x - camX;
+      const sy = d.y - camY;
+      if (sx < -64 || sx > WIDTH + 64 || sy < -8 || sy > HEIGHT + 96) continue;
+      if (layer === "mid" && d.sprite.startsWith("lantern")) this.glow(sx, sy - 26, 22);
+      if (layer === "back" && d.sprite === "hanging_lantern") this.glow(sx, sy - 6, 20);
+      draw.decor(d.sprite, sx, sy, { flip: d.flip, dark: layer === "back" && !d.sprite.includes("lantern"), t: this.t, alpha: layer === "front" ? 0.9 : undefined });
+    }
+  }
+
+  /** Soft warm light around lanterns and windows. */
+  private glow(x: number, y: number, r: number): void {
+    const ctx = this.ctx.draw.ctx;
+    const flicker = 0.85 + 0.15 * Math.sin(this.t * 7 + x);
+    ctx.fillStyle = COLORS.q;
+    for (const [k, a] of [[1, 0.05], [0.66, 0.06], [0.36, 0.08]] as const) {
+      ctx.globalAlpha = a * flicker;
+      ctx.beginPath();
+      ctx.arc(Math.round(x), Math.round(y), r * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Fireflies outdoors, dust motes indoors: a living room even when nothing moves. */
+  private renderAmbient(camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    const indoor = this.current.indoor;
+    const n = indoor ? 18 : 14;
+    for (let i = 0; i < n; i++) {
+      // each mote drifts on its own slow loop, anchored in the world (parallax-free)
+      const s = i * 97.13;
+      const span = WIDTH + 80;
+      const wx = ((s * 13.7 + this.t * (indoor ? 4 : 9) * (i % 2 ? 1 : -1)) % span + span) % span + Math.floor(camX / span) * span - 40;
+      const x = wx - camX + Math.sin(this.t * 0.7 + s) * 10;
+      const y = ((s * 7.3) % HEIGHT) + Math.sin(this.t * (0.5 + (i % 5) * 0.1) + s) * 14 - (indoor ? (this.t * 3) % HEIGHT : 0);
+      const yy = ((y % HEIGHT) + HEIGHT) % HEIGHT;
+      const blink = indoor ? 0.35 : Math.max(0, Math.sin(this.t * (1.3 + (i % 4) * 0.3) + s));
+      if (blink <= 0.05) continue;
+      draw.rect(x, yy, 1, 1, indoor ? COLORS.g : COLORS.Y, blink * (indoor ? 0.6 : 0.9));
+      if (!indoor && blink > 0.7) draw.rect(x - 1, yy, 3, 1, COLORS.y, 0.25);
+    }
+    void camY;
+  }
+
+  /** A text anchored in the world, kept fully on screen. */
+  private label(text: string, x: number, y: number, color: string): void {
+    const w = this.ctx.draw.textWidth(text.toUpperCase());
+    const cx = Math.max(w / 2 + 3, Math.min(WIDTH - w / 2 - 3, x));
+    const cy = Math.max(3, Math.min(HEIGHT - 20, y));
+    this.ctx.draw.text(text, cx, cy, color, { align: "center" });
   }
 
   /** Current key names, for {jump}-style placeholders in tutorial texts. */

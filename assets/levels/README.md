@@ -45,6 +45,11 @@ Place **point objects** (Insert Point, shortcut `I`) and set their **Class** in 
 | `page` | A **Lost Page** (collectible) |
 | `moment` | A **Lumi's Moment** (collectible) |
 | `npc` | A character. Property `name` (string), shown above them when Iris comes close. Placeholder sprite until each NPC gets its own |
+| `lingering` | A villager frozen in the Stilling (a faint echo). Property `text`: the thought shown when Iris passes by. Optional `flip` (bool) |
+| `text` | A tutorial text in the world, fading in as Iris gets close. Property `text`; `{jump}`, `{dash}`, `{rewind}`, `{left}`, `{right}`, `{up}`, `{down}` are replaced by the player's keys |
+| `deco` | A decoration (not solid). Point = where it stands (bottom-centre). Properties: `sprite` (a name from `sprites.json` → `decor`, e.g. `house`, `pine`, `apple_tree`, `fence`, `lantern_post`, `mill_wheel`, `crate`…), `layer` = `back` (behind the tiles, darkened), `mid` (default, behind Iris) or `front` (in front of Iris), `flip` (bool) |
+
+Grass, flowers, rocks, mushrooms, vines, cobwebs and stalactites are added **automatically** on every ground top and ceiling, so only the big props need placing by hand.
 
 Collectibles (`note`, `page`, `moment`) float above Iris after she picks them up and are only **kept once she reaches a checkpoint or shrine**. If she dies first, they go back where they were.
 
@@ -56,6 +61,8 @@ In Map → Map Properties, add a custom property:
 | Name | Type | Meaning |
 |---|---|---|
 | `echoes` | int | Max echoes at once in this room (default 3). Iris can never hold more than her unlocked echo slots |
+| `title` | string | Name shown when entering the room (default: the file name) |
+| `indoor` | bool | A dark stone back wall instead of the night sky, indoor props (cobwebs, crates) and dust instead of fireflies |
 | `abilities` | string | **First room of a chapter only.** What Iris starts with, e.g. `doubleJump, wallJump` (others: `dash`, `rewind`) |
 | `echoSlots` | int | **First room of a chapter only.** How many echoes Iris starts able to hold (unlocking `rewind` gives at least 1) |
 
