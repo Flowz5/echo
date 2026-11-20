@@ -55,9 +55,11 @@ export const TUNING = {
   wallSlideAccel: 700, // how fast Iris slows down when she grabs a wall while falling fast
   wallJumpSpeed: 210,
   wallJumpVarTime: 0.1,
-  wallJumpPush: 150, // horizontal kick away from the wall
-  wallJumpNeutralPush: 85, // jumping without pushing away: a smaller kick, to climb a single wall
-  wallJumpLock: 0.13, // seconds the kick direction overrides the stick (no instant re-grab)
+  wallJumpPush: 150, // horizontal kick away from the wall (also when still holding towards it)
+  wallJumpNeutralPush: 85, // jumping with no direction held: a smaller kick, to climb a single wall
+  wallJumpLock: 0.16, // seconds the kick direction overrides the stick (no instant re-grab)
+  wallJumpSoftLock: 0.15, // then, for this long, pushing back towards the old wall only works weakly
+  wallJumpSoftMult: 0.3, // …at this fraction of the normal air acceleration
   wallCoyote: 0.08, // can still wall jump this long after leaving a wall
   wallCheck: 2, // px: how close to a wall counts as touching it
 
@@ -138,6 +140,8 @@ export class Player {
   private wallCoyote = 0;
   private forceMoveTimer = 0;
   private forceMoveDir = 0;
+  private softLockTimer = 0;
+  private softLockDir = 0; // direction of the wall Iris just kicked off
   private slideFxTimer = 0;
   private scaleX = 1;
   private scaleY = 1;
@@ -161,7 +165,7 @@ export class Player {
     this.canDash = this.canDoubleJump = true;
     this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
     this.wallSliding = false;
-    this.wallCoyote = this.forceMoveTimer = 0;
+    this.wallCoyote = this.forceMoveTimer = this.softLockTimer = 0;
     this.voidTime = 0;
     this.power = 0;
     this.scaleX = 0.6; // pop in
@@ -198,7 +202,9 @@ export class Player {
     this.dropTimer = Math.max(0, this.dropTimer - dt);
     this.coyote = Math.max(0, this.coyote - dt);
     this.wallCoyote = Math.max(0, this.wallCoyote - dt);
+    if (this.forceMoveTimer > 0 && this.forceMoveTimer - dt <= 0) this.softLockTimer = TUNING.wallJumpSoftLock;
     this.forceMoveTimer = Math.max(0, this.forceMoveTimer - dt);
+    this.softLockTimer = Math.max(0, this.softLockTimer - dt);
     this.buffer = input.justPressed("jump") ? T.jumpBuffer : Math.max(0, this.buffer - dt);
     this.jumpHeld = input.isDown("jump");
 
@@ -260,6 +266,8 @@ export class Player {
       accel = T.overspeedDecel; // keep dash momentum in the air
     } else {
       accel = mx !== 0 ? T.airAccel : T.airDecel;
+      // just kicked off a wall: holding back towards it barely pulls (time to switch keys)
+      if (this.softLockTimer > 0 && mx === this.softLockDir) accel *= T.wallJumpSoftMult;
     }
     this.vx = approach(this.vx, target, accel * dt);
     if (mx !== 0) this.facing = mx as 1 | -1;
@@ -300,13 +308,16 @@ export class Player {
   private wallJump(mx: number): void {
     const T = TUNING;
     const away = -this.wallDir as 1 | -1;
-    const pushingAway = mx === away;
-    const push = pushingAway ? T.wallJumpPush : T.wallJumpNeutralPush;
+    // only a jump with no direction held is the short "climb the same wall" kick;
+    // holding towards the wall (natural while sliding) still gives the full kick away
+    const neutral = mx === 0;
     this.jump(T.wallJumpSpeed, T.wallJumpVarTime);
-    this.vx = away * push;
+    this.vx = away * (neutral ? T.wallJumpNeutralPush : T.wallJumpPush);
     this.facing = away;
     this.forceMoveDir = away;
-    this.forceMoveTimer = pushingAway ? T.wallJumpLock : T.wallJumpLock * 0.6;
+    this.forceMoveTimer = neutral ? T.wallJumpLock * 0.5 : T.wallJumpLock;
+    this.softLockDir = this.wallDir;
+    this.softLockTimer = 0;
     this.wallSliding = false;
     this.wallCoyote = 0;
     this.sound("wallJump");
