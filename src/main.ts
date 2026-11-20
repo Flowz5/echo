@@ -6,7 +6,7 @@ import { startLoop } from "./engine/loop";
 import { Renderer } from "./engine/renderer";
 import { ControlsMenu } from "./scenes/controls-menu";
 import { Credits } from "./scenes/credits";
-import { GamePlaceholder } from "./scenes/game-placeholder";
+import { GameScene } from "./scenes/game-scene";
 import { MainMenu } from "./scenes/main-menu";
 import { MenuBackground } from "./scenes/menu-background";
 import { SceneManager, type Ctx } from "./scenes/scene";
@@ -36,7 +36,7 @@ async function boot(): Promise<void> {
   scenes.register("settings", new SettingsMenu(ctx));
   scenes.register("controls", new ControlsMenu(ctx));
   scenes.register("credits", new Credits(ctx));
-  scenes.register("game", new GamePlaceholder(ctx));
+  scenes.register("game", new GameScene(ctx));
   scenes.go("main");
 
   canvas.focus();

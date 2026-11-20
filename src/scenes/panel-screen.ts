@@ -2,7 +2,7 @@ import { C, HEIGHT, WIDTH } from "../config";
 import { OptionList, type Option } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
-const ROW_H = 14;
+const DEFAULT_ROW_H = 14;
 const PANEL_W = 248;
 
 /** Base for the menu screens drawn as a titled panel over the animated backdrop. */
@@ -17,11 +17,13 @@ export abstract class PanelScreen implements Scene {
     protected readonly ctx: Ctx,
     private readonly title: string,
     items: Option[],
+    opts: { rowH?: number } = {},
   ) {
-    this.panelH = items.length * ROW_H + 12;
+    const rowH = opts.rowH ?? DEFAULT_ROW_H;
+    this.panelH = items.length * rowH + 12;
     this.panelY = Math.round((HEIGHT - this.panelH) / 2) + 6;
     const x = Math.round((WIDTH - PANEL_W) / 2);
-    this.list = new OptionList(ctx, items, { style: "rows", x, y: this.panelY + 9, w: PANEL_W, rowH: ROW_H });
+    this.list = new OptionList(ctx, items, { style: "rows", x, y: this.panelY + 9, w: PANEL_W, rowH });
   }
 
   enter(_from: ScreenName | null): void {
