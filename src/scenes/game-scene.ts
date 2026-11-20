@@ -10,7 +10,8 @@ import { World, type RoomDef } from "../game/world";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
-const WORLD = "playground";
+/** chapter to load: chapter0 by default, or ?world=playground for the movement test rooms */
+const WORLD = new URLSearchParams(location.search).get("world") ?? "chapter0";
 const RESPAWN_DELAY = 0.5;
 const CAMERA_LERP_X = 7; // higher = snappier
 const CAMERA_LERP_Y = 4.5;
@@ -307,7 +308,7 @@ export class GameScene implements Scene {
   private checkCollectibles(): void {
     const p = this.player;
     for (const e of this.level.entities) {
-      if (e.kind === "npc" || this.progress.taken(e.key)) continue;
+      if (e.kind === "npc" || e.kind === "text" || e.kind === "lingering" || this.progress.taken(e.key)) continue;
       if (!overlaps(p.hitbox, this.collectibleRect(e))) continue;
       this.fx.burst(e.x, e.y - 9, 16, { colors: [COLORS.y, COLORS.Y, COLORS.W, COLORS.e], speed: 70, life: 0.5 });
       if (e.kind === "shard") {
@@ -448,6 +449,8 @@ export class GameScene implements Scene {
     ctx.drawImage(img.sky, 0, 0);
     this.layer(img.mountains, manifest.backgrounds.mountains.parallax, camX + this.current.x, camY + this.current.y);
     this.layer(img.hills, manifest.backgrounds.hills.parallax, camX + this.current.x, camY + this.current.y);
+    if (this.transition?.from.indoor) this.backWall(this.transition.from, camX, camY);
+    if (this.current.indoor) this.backWall(this.current, camX, camY);
 
     if (this.transition) {
       const from = this.transition.from;
@@ -500,7 +503,27 @@ export class GameScene implements Scene {
     const { draw } = this.ctx;
     const p = this.player;
     const near = (x: number, y: number) => Math.hypot(p.x + 4 - x, p.y + 6 - y) < TALK_RANGE;
+    const keys = this.keyLabels();
     for (const e of this.level.entities) {
+      if (e.kind === "text") {
+        // tutorial text in the world, fading in as Iris gets close
+        const d = Math.hypot(p.x + 4 - e.x, p.y + 6 - e.y);
+        const a = Math.max(0, Math.min(1, (140 - d) / 60));
+        if (a > 0) {
+          draw.ctx.globalAlpha = a;
+          const text = String(e.props.text ?? "").replace(/\{(\w+)\}/g, (_, k: string) => keys[k] ?? k.toUpperCase());
+          draw.text(text, e.x - camX, e.y - camY, C.bone, { align: "center" });
+          draw.ctx.globalAlpha = 1;
+        }
+        continue;
+      }
+      if (e.kind === "lingering") {
+        // a villager frozen in the Stilling: a faint echo with a thought
+        const shimmer = 0.4 + 0.1 * Math.sin(this.t * 2 + e.x);
+        draw.frame(draw.img.npc, 0, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, alpha: shimmer, flip: e.props.flip === true });
+        if (near(e.x, e.y - 12)) draw.text(String(e.props.text ?? "..."), e.x - camX, e.y - 34 - camY, C.echoLight, { align: "center" });
+        continue;
+      }
       if (e.kind === "npc") {
         const blink = Math.floor(this.t * 2 + e.x) % 7 === 0 ? 1 : 0;
         draw.frame(draw.img.npc, blink, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, flip: p.x + 4 < e.x });
@@ -514,6 +537,14 @@ export class GameScene implements Scene {
     for (const c of this.level.checkpoints) {
       if (c.kind === "shrine" && near(c.x, c.y - 14)) draw.text("BELL SHRINE", c.x - camX, c.y - 42 - camY, C.gold, { align: "center" });
     }
+  }
+
+  /** Current key names, for {jump}-style placeholders in tutorial texts. */
+  private keyLabels(): Record<string, string> {
+    const b = this.ctx.settings.bindings;
+    const out: Record<string, string> = {};
+    for (const [action, code] of Object.entries(b)) out[action] = keyName(code);
+    return out;
   }
 
   /** Collectibles not secured yet float above Iris until the next checkpoint. */
@@ -580,8 +611,29 @@ export class GameScene implements Scene {
     if (this.roomNameTimer <= 0) return;
     const alpha = Math.min(1, this.roomNameTimer * 2, (ROOM_NAME_TIME - this.roomNameTimer) * 4);
     this.ctx.draw.ctx.globalAlpha = alpha;
-    this.ctx.draw.text(this.current.name.toUpperCase().replace(/[-_]/g, " "), 6, HEIGHT - 12, C.ash);
+    this.ctx.draw.text(this.current.title.toUpperCase(), 6, HEIGHT - 12, C.ash);
     this.ctx.draw.ctx.globalAlpha = 1;
+  }
+
+  /** Indoor rooms: a dark stone back wall over the room's area (scrolls with the room). */
+  private backWall(def: RoomDef, camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    const ox = def.x - this.current.x - camX;
+    const oy = def.y - this.current.y - camY;
+    const x0 = Math.max(0, ox);
+    const y0 = Math.max(0, oy);
+    const x1 = Math.min(WIDTH, ox + def.level.width);
+    const y1 = Math.min(HEIGHT, oy + def.level.height);
+    if (x1 <= x0 || y1 <= y0) return;
+    draw.rect(x0, y0, x1 - x0, y1 - y0, C.void);
+    draw.ctx.save();
+    draw.ctx.beginPath();
+    draw.ctx.rect(x0, y0, x1 - x0, y1 - y0);
+    draw.ctx.clip();
+    const start = (v: number) => Math.floor(-v / 16) * 16 + v;
+    for (let y = start(oy); y < y1; y += 16)
+      for (let x = start(ox); x < x1; x += 16) draw.frame(draw.img.tiles, 0, x, y, { alpha: 0.28 });
+    draw.ctx.restore();
   }
 
   /** Layers scroll with the camera at their parallax factor and stay anchored to the screen bottom. */
