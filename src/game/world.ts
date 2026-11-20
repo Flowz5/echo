@@ -1,5 +1,6 @@
 import { TILE } from "../config";
-import { Level, type Point, type Tile } from "./level";
+import { Level, type Checkpoint, type Entity, type Point, type Props, type Tile } from "./level";
+import { parseAbilities, type Ability } from "./progress";
 
 /**
  * Loads a chapter made in Tiled: a .world file placing rooms (.tmj maps) side by side.
@@ -7,8 +8,11 @@ import { Level, type Point, type Tile } from "./level";
  *
  * Tiled conventions (see assets/levels/README.md):
  *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door)
- *   - object layer "objects" with point objects of class "spawn" or "checkpoint"
+ *   - object layer "objects" with point objects of class:
+ *       spawn, checkpoint, shrine, shard, note, page, moment, npc
  *   - optional map property "echoes" (int): max echoes in the room
+ *   - first room only: "abilities" (string, e.g. "doubleJump, wallJump") and "echoSlots" (int)
+ *     = what Iris starts the chapter with
  */
 
 const WORLD_FILES = import.meta.glob("../../assets/levels/*.world", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -22,7 +26,9 @@ interface TiledProperty {
   value: unknown;
 }
 interface TiledObject {
+  id: number;
   type?: string;
+  properties?: TiledProperty[];
   class?: string;
   x: number;
   y: number;
@@ -60,12 +66,25 @@ export interface RoomDef {
 }
 
 const DEFAULT_ECHOES = 3;
+const COLLECTIBLES = ["shard", "note", "page", "moment"] as const;
 
 function fileName(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
-function parseMap(name: string, json: string): { level: Level; maxEchoes: number } {
+function props(list?: TiledProperty[]): Props {
+  const out: Props = {};
+  for (const p of list ?? []) out[p.name] = p.value as Props[string];
+  return out;
+}
+
+interface ParsedMap {
+  level: Level;
+  maxEchoes: number;
+  props: Props;
+}
+
+function parseMap(name: string, json: string): ParsedMap {
   const map = JSON.parse(json) as TiledMap;
   if (map.infinite) throw new Error(`${name}: infinite maps are not supported (Map > Map Properties > Infinite off)`);
   if (map.tilewidth !== TILE) throw new Error(`${name}: tiles must be ${TILE}x${TILE}`);
@@ -84,7 +103,8 @@ function parseMap(name: string, json: string): { level: Level; maxEchoes: number
   }
 
   const spawns: Point[] = [];
-  const checkpoints: Point[] = [];
+  const checkpoints: (Point & { kind: Checkpoint["kind"] })[] = [];
+  const entities: Entity[] = [];
   for (const layer of map.layers) {
     if (layer.type !== "objectgroup") continue;
     for (const o of layer.objects ?? []) {
@@ -92,18 +112,26 @@ function parseMap(name: string, json: string): { level: Level; maxEchoes: number
       // points mark feet; for rectangles, use their bottom-centre
       const p = { x: o.x + (o.width ?? 0) / 2, y: o.y + (o.height ?? 0) };
       if (kind === "spawn") spawns.push(p);
-      else if (kind === "checkpoint") checkpoints.push(p);
+      else if (kind === "checkpoint") checkpoints.push({ ...p, kind: "crystal" });
+      else if (kind === "shrine") checkpoints.push({ ...p, kind: "shrine" });
+      else if (kind === "npc" || (COLLECTIBLES as readonly string[]).includes(kind ?? ""))
+        entities.push({ ...p, key: `${name}:${o.id}`, kind: kind as Entity["kind"], props: props(o.properties) });
+      else if (kind) console.warn(`${name}: unknown object class "${kind}"`);
     }
   }
-  const echoes = map.properties?.find((p) => p.name === "echoes")?.value;
+  const mapProps = props(map.properties);
   return {
-    level: new Level(rows, { name, spawns, checkpoints }),
-    maxEchoes: typeof echoes === "number" ? echoes : DEFAULT_ECHOES,
+    level: new Level(rows, { name, spawns, checkpoints, entities }),
+    maxEchoes: typeof mapProps.echoes === "number" ? mapProps.echoes : DEFAULT_ECHOES,
+    props: mapProps,
   };
 }
 
 export class World {
   readonly rooms: RoomDef[];
+  /** abilities and echo slots Iris starts this chapter with (first room's properties) */
+  readonly startAbilities: Ability[] = [];
+  startEchoSlots = 0;
 
   constructor(worldName: string) {
     const worldPath = Object.keys(WORLD_FILES).find((p) => fileName(p) === `${worldName}.world`);
@@ -113,7 +141,11 @@ export class World {
       const mapPath = Object.keys(MAP_FILES).find((p) => fileName(p) === fileName(m.fileName));
       if (!mapPath) throw new Error(`Room "${m.fileName}" listed in ${worldName}.world was not found`);
       const name = fileName(m.fileName).replace(/\.tmj$/, "");
-      const { level, maxEchoes } = parseMap(name, MAP_FILES[mapPath]);
+      const { level, maxEchoes, props: roomProps } = parseMap(name, MAP_FILES[mapPath]);
+      if (world.maps.indexOf(m) === 0) {
+        this.startAbilities.push(...parseAbilities(String(roomProps.abilities ?? "")));
+        this.startEchoSlots = typeof roomProps.echoSlots === "number" ? roomProps.echoSlots : 0;
+      }
       if (level.width < 320 || level.height < 180) console.warn(`Room ${name} is smaller than the screen (min 20x12 tiles)`);
       return { name, level, x: m.x, y: m.y, maxEchoes };
     });

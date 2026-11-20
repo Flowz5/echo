@@ -10,7 +10,7 @@
  "tilewidth": 16,
  "tileheight": 16,
  "nextlayerid": 3,
- "nextobjectid": 2,
+ "nextobjectid": 7,
  "compressionlevel": -1,
  "properties": [
   {
@@ -868,6 +868,80 @@
      "point": true,
      "x": 24.0,
      "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 2,
+     "name": "",
+     "type": "shard",
+     "point": true,
+     "x": 56.0,
+     "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "unlocks",
+       "type": "string",
+       "value": "rewind"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "name": "",
+     "type": "shard",
+     "point": true,
+     "x": 184.0,
+     "y": 144,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "unlocks",
+       "type": "string",
+       "value": "echo"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "name": "",
+     "type": "moment",
+     "point": true,
+     "x": 424.0,
+     "y": 128,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 5,
+     "name": "",
+     "type": "note",
+     "point": true,
+     "x": 584.0,
+     "y": 32,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 6,
+     "name": "",
+     "type": "page",
+     "point": true,
+     "x": 824.0,
+     "y": 32,
      "width": 0,
      "height": 0,
      "rotation": 0,

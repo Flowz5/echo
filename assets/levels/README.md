@@ -38,7 +38,15 @@ Place **point objects** (Insert Point, shortcut `I`) and set their **Class** in 
 | Class | Meaning |
 |---|---|
 | `spawn` | Where Iris's **feet** appear. Put one near each entrance: when Iris enters a room, she respawns at the closest one if she dies |
-| `checkpoint` | An **Echo Crystal**. Place the point on the ground (the crystal's base). Touching it makes it the respawn point and refills the dash and double jump |
+| `checkpoint` | An **Echo Crystal**. Place the point on the ground (the crystal's base). Touching it makes it the respawn point, refills the dash and double jump, and keeps the collectibles picked up since the last checkpoint |
+| `shrine` | A **Bell Shrine** (on the ground). Works like a checkpoint for now; later: saving and fast travel |
+| `shard` | A **Bell Shard**. Property `unlocks` (string): `dash`, `rewind`, `doubleJump`, `wallJump` or `echo` (+1 echo slot). Kept immediately, shows a tutorial banner |
+| `note` | A **Resonant Note** (collectible) |
+| `page` | A **Lost Page** (collectible) |
+| `moment` | A **Lumi's Moment** (collectible) |
+| `npc` | A character. Property `name` (string), shown above them when Iris comes close. Placeholder sprite until each NPC gets its own |
+
+Collectibles (`note`, `page`, `moment`) float above Iris after she picks them up and are only **kept once she reaches a checkpoint or shrine**. If she dies first, they go back where they were.
 
 Rectangles also work: their bottom-centre is used.
 
@@ -47,7 +55,9 @@ In Map → Map Properties, add a custom property:
 
 | Name | Type | Meaning |
 |---|---|---|
-| `echoes` | int | Max echoes at once in this room (default 3) |
+| `echoes` | int | Max echoes at once in this room (default 3). Iris can never hold more than her unlocked echo slots |
+| `abilities` | string | **First room of a chapter only.** What Iris starts with, e.g. `doubleJump, wallJump` (others: `dash`, `rewind`) |
+| `echoSlots` | int | **First room of a chapter only.** How many echoes Iris starts able to hold (unlocking `rewind` gives at least 1) |
 
 ### Rules
 - Tiles are **16×16**. Map → Map Properties → **Infinite: off**.

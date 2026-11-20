@@ -10,13 +10,23 @@
  "tilewidth": 16,
  "tileheight": 16,
  "nextlayerid": 3,
- "nextobjectid": 3,
+ "nextobjectid": 6,
  "compressionlevel": -1,
  "properties": [
   {
    "name": "echoes",
    "type": "int",
    "value": 3
+  },
+  {
+   "name": "abilities",
+   "type": "string",
+   "value": "doubleJump, wallJump"
+  },
+  {
+   "name": "echoSlots",
+   "type": "int",
+   "value": 0
   }
  ],
  "tilesets": [
@@ -308,6 +318,56 @@
      "point": true,
      "x": 152.0,
      "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true
+    },
+    {
+     "id": 3,
+     "name": "TAMSIN",
+     "type": "npc",
+     "point": true,
+     "x": 88.0,
+     "y": 176,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "name",
+       "type": "string",
+       "value": "TAMSIN"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "name": "",
+     "type": "shard",
+     "point": true,
+     "x": 184.0,
+     "y": 64,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "unlocks",
+       "type": "string",
+       "value": "dash"
+      }
+     ]
+    },
+    {
+     "id": 5,
+     "name": "",
+     "type": "page",
+     "point": true,
+     "x": 104.0,
+     "y": 96,
      "width": 0,
      "height": 0,
      "rotation": 0,

@@ -16,6 +16,12 @@ ASCII legend:
   b  pressure plate  D  door                .  empty
   S  spawn point (player feet; respawn spot when entering the room)
   C  checkpoint crystal
+  H  Bell Shrine
+Objects that need properties (shards, collectibles, NPCs) go in the room's "objects" list:
+  {"type": "shard", "at": (col, row), "props": {"unlocks": "dash"}}
+  {"type": "npc", "at": (col, row), "props": {"name": "TAMSIN"}}
+  types: shard (unlocks: dash/rewind/doubleJump/wallJump/echo), note, page, moment, npc (name)
+Room "props" are written as Tiled map properties (echoes, and on the first room: abilities, echoSlots).
 """
 import json
 import os
@@ -32,6 +38,13 @@ ROOMS = [
         "name": "start",
         "at": (0, 0),
         "echoes": 3,
+        # the chapter starts with these (the playground lets you unlock dash and rewind)
+        "props": {"abilities": "doubleJump, wallJump", "echoSlots": 0},
+        "objects": [
+            {"type": "npc", "at": (5, 10), "props": {"name": "TAMSIN"}},
+            {"type": "shard", "at": (11, 3), "props": {"unlocks": "dash"}},
+            {"type": "page", "at": (6, 5)},
+        ],
         "rows": [
             "####################",
             "#..................#",
@@ -51,6 +64,13 @@ ROOMS = [
         "name": "playground",
         "at": (20, 0),
         "echoes": 3,
+        "objects": [
+            {"type": "shard", "at": (3, 10), "props": {"unlocks": "rewind"}},
+            {"type": "shard", "at": (11, 8), "props": {"unlocks": "echo"}},
+            {"type": "moment", "at": (26, 7)},
+            {"type": "note", "at": (36, 1)},
+            {"type": "page", "at": (51, 1)},
+        ],
         "rows": [
             "..........................................................",
             "..........................................................",
@@ -72,6 +92,10 @@ ROOMS = [
         "name": "summit",
         "at": (60, -12),
         "echoes": 3,
+        "objects": [
+            {"type": "npc", "at": (10, 3), "props": {"name": "QUILL"}},
+            {"type": "page", "at": (17, 6)},
+        ],
         "rows": [
             "####################",
             "#..................#",
@@ -83,7 +107,7 @@ ROOMS = [
             "#.............---..#",
             "#..................#",
             "#........#.........#",
-            "#........#....S....#",
+            "#.......S#........H#",
             "##########...#....##",
         ],
     },
@@ -110,6 +134,11 @@ def tileset():
     }
 
 
+def tiled_prop(name, value):
+    kind = "bool" if isinstance(value, bool) else "int" if isinstance(value, int) else "float" if isinstance(value, float) else "string"
+    return {"name": name, "type": kind, "value": value}
+
+
 def room_map(room):
     rows = room["rows"]
     h, w = len(rows), len(rows[0])
@@ -118,11 +147,11 @@ def room_map(room):
         assert len(row) == w, f"{room['name']}: row {ty} is {len(row)} wide, expected {w}"
         for tx, ch in enumerate(row):
             data.append(GID.get(ch, 0))
-            if ch in "SC":
+            if ch in "SCH":
                 objects.append({
                     "id": next_id,
                     "name": "",
-                    "type": "spawn" if ch == "S" else "checkpoint",
+                    "type": {"S": "spawn", "C": "checkpoint", "H": "shrine"}[ch],
                     "point": True,
                     # points mark the feet / the crystal's base: bottom-centre of the tile
                     "x": tx * TILE + TILE / 2,
@@ -133,6 +162,25 @@ def room_map(room):
                     "visible": True,
                 })
                 next_id += 1
+    for o in room.get("objects", []):
+        tx, ty = o["at"]
+        obj = {
+            "id": next_id,
+            "name": o.get("props", {}).get("name", ""),
+            "type": o["type"],
+            "point": True,
+            "x": tx * TILE + TILE / 2,
+            "y": ty * TILE + TILE,
+            "width": 0,
+            "height": 0,
+            "rotation": 0,
+            "visible": True,
+        }
+        if o.get("props"):
+            obj["properties"] = [tiled_prop(k, v) for k, v in o["props"].items()]
+        objects.append(obj)
+        next_id += 1
+    map_props = [tiled_prop("echoes", room["echoes"])] + [tiled_prop(k, v) for k, v in room.get("props", {}).items()]
     return {
         "type": "map",
         "version": "1.10",
@@ -147,7 +195,7 @@ def room_map(room):
         "nextlayerid": 3,
         "nextobjectid": next_id,
         "compressionlevel": -1,
-        "properties": [{"name": "echoes", "type": "int", "value": room["echoes"]}],
+        "properties": map_props,
         "tilesets": [{"firstgid": 1, "source": "terrain.tsj"}],
         "layers": [
             {
