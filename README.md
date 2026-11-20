@@ -22,19 +22,38 @@ npm run sprites    # regenerate placeholder sprites (python3, no deps)
 | Change value | Left / Right |
 | Back | Esc / Backspace |
 
-Gameplay keys (jump, dash, rewind, pause) can be rebound in **Settings → Controls**.
+## Controls (game)
+
+| Action | Default |
+|---|---|
+| Move | WASD (ZQSD on AZERTY) / arrows |
+| Jump / double jump | Space |
+| Dash (8 directions) | Left Shift |
+| Wall slide / wall jump | Push into a wall / Jump against a wall |
+| Rewind (leave a solid echo) | R |
+| Fast fall / drop through platform | Down / Down + Jump |
+| Pause | Esc |
+| Debug overlay | F3 |
+
+Every key can be rebound in **Settings → Controls**. Movement tuning lives in `TUNING` at the top of `src/game/player.ts`.
 
 ## Project layout
 
 ```
-assets/        art bible (SCRIPT.md), palette, sprites, UI, backgrounds
+assets/        art bible (SCRIPT.md), palette, sprites, UI, backgrounds, levels (Tiled)
 public/        favicon
 src/
   engine/      renderer (320x180, integer scaling), fixed-step loop, input, assets, drawing, audio
-  scenes/      main menu, settings, controls, credits, game placeholder
+  game/        world & rooms (Tiled loader), level, player, echoes, scarf, particles
+  scenes/      main menu, settings, controls, credits, game (camera, pause)
+  audio/       chiptune synth, music sequencer and the original tracks
   ui/          reusable option list (keyboard + mouse)
   settings.ts  persisted settings (localStorage)
-tools/         sprite generator
+tools/         sprite generator, ASCII → Tiled room drafter
 ```
+
+Music is composed in code (`src/audio/tracks.ts`) and played by a tiny Web Audio sequencer; no audio files.
+
+Levels are made in [Tiled](https://www.mapeditor.org/): see [`assets/levels/README.md`](assets/levels/README.md).
 
 See [`assets/SCRIPT.md`](assets/SCRIPT.md) for the story, mechanics and art direction.

@@ -156,16 +156,17 @@ HEAD = [
     "...KgWWWWWWgK...",
     "..KKKggggggKK...",
 ]
+# Only the collar is drawn: the scarf's tail is simulated in-game (src/game/scarf.ts)
 SCARF_A = [
-    ".KPPPPPPPPPPK...",
-    "KPqKPPPPPPPPK...",
-    "KPK.K344443K....",
-    ".K..K343343K....",
+    "...KqPPPPPPPK...",
+    "....KPPPPPPK....",
+    "....K344443K....",
+    "....K343343K....",
 ]
-SCARF_B = [  # flutter frame
-    ".KPPPPPPPPPPK...",
-    "KPPKPPPPPPPPK...",
-    ".KK.K344443K....",
+SCARF_B = [
+    "...KqPPPPPPPK...",
+    "....KPPPPPpK....",
+    "....K344443K....",
     "....K343343K....",
 ]
 LEGS = {
@@ -176,14 +177,7 @@ LEGS = {
     "tuck": ["....K333333K....", "....KK3333KK....", ".....KKKKKK....."],
     "dangle": ["....K333333K....", "....K3K..K3K....", "....KK....KK...."],
 }
-FALL_TOP = HEAD[:7] + [
-    ".KPKgWWWWWWgK...",
-    ".KPKKggggggKK...",
-    ".KPPPPPPPPPPK...",
-    "..KKPPPPPPPPK...",
-    "....K344443K....",
-    "....K343343K....",
-]
+FALL_TOP = HEAD + SCARF_A
 DASH = [
     "................",
     "................",
@@ -193,14 +187,25 @@ DASH = [
     "....KWWWWWWEeK..",
     "....KWWWWWWeEK..",
     "....KgWWWWWWgK..",
-    "KKKKKKggggggKK..",
-    "PPPPPPPPPPPPPK..",
-    "KKqqKKPPPPPPK...",
+    ".....KggggggKK..",
+    "....KqPPPPPPPK..",
+    ".....KPPPPPPK...",
     ".....K344443K...",
     ".....K343343K...",
     "....K333333K....",
     "...KK3KKKK3KK...",
     "...KK......KK...",
+]
+
+# sliding down a wall on the right: hand on the wall, legs tucked
+WALL = HEAD + [
+    "...KqPPPPPPPK...",
+    "....KPPPPPPKWK..",
+    "....K344443K....",
+    "....K343343K....",
+    "....K333333K....",
+    ".....KK3KK3K....",
+    "......KK.KK.....",
 ]
 
 idle0 = HEAD + SCARF_A + LEGS["stand"]
@@ -216,6 +221,7 @@ PLAYER_FRAMES = {
     "jump": [HEAD + SCARF_A + LEGS["tuck"]],
     "fall": [FALL_TOP + LEGS["dangle"]],
     "dash": [DASH],
+    "wall": [WALL],
 }
 ORDER = [(name, i) for name in PLAYER_FRAMES for i in range(len(PLAYER_FRAMES[name]))]
 for name, frames in PLAYER_FRAMES.items():
@@ -390,6 +396,155 @@ def make_door(open_):
                     img.set(x, y, "y")
             elif y <= 5:
                 img.set(x, y, "a" if x in (5, 8, 11) else ("A" if x in (4, 7, 10) else "K"))
+    return img
+
+
+# --------------------------------------------------------------------------- collectibles (16x16)
+SHARD = [
+    "................",
+    "......KK........",
+    ".....KYyK.......",
+    ".....KyAK.......",
+    "....KYyAaK......",
+    "....KyCAaK......",
+    "...KYyCeAaK.....",
+    "...KyCeEAaK.....",
+    "...KyCCeAaK.....",
+    "....KyCAaK......",
+    "....KyAaK.......",
+    ".....KAaK.......",
+    ".....KaK........",
+    "......K.........",
+    "................",
+    "................",
+]
+NOTE = [
+    "................",
+    "........KKKK....",
+    "........KyYK....",
+    "........KyyKK...",
+    "........KyKyK...",
+    "........KyK.K...",
+    "........KyK.....",
+    "........KyK.....",
+    "....KKKKKyK.....",
+    "...KYyyyAyK.....",
+    "...KyyyyAaK.....",
+    "...KyyyAaaK.....",
+    "....KAaaaK......",
+    ".....KKKK.......",
+    "................",
+    "................",
+]
+PAGE = [
+    "................",
+    "................",
+    "...KKKKKKKK.....",
+    "...KWWWWWWgK....",
+    "...KWGGGGWWgK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGGGWWK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGGWWWK...",
+    "...KWWWWWWWWK...",
+    "...KWGGGWWWWK...",
+    "...KWWWWWWWgK...",
+    "...KKKKKKKKKK...",
+    "................",
+    "................",
+    "................",
+]
+KITE = [
+    "................",
+    ".......KK.......",
+    "......KeEK......",
+    ".....KeEECK.....",
+    "....KeeECCcK....",
+    "...KeeeECCccK...",
+    "....KeeCCccK....",
+    ".....KeCCcK.....",
+    "......KCcK......",
+    ".......KK.......",
+    "........K.......",
+    ".......C........",
+    "........C.......",
+    ".......C........",
+    "........c.......",
+    "................",
+]
+
+# --------------------------------------------------------------------------- NPC placeholder (16x24, 2 frames)
+NPC_BASE = [
+    "................",
+    "................",
+    "......KKKK......",
+    ".....KGggGK.....",
+    "....KGggggGK....",
+    "...KGGggggGGK...",
+    "..KKKKKKKKKKKK..",
+    "....KWWWWWWK....",
+    "....KWKWWKWK....",
+    "....KWWWWWWK....",
+    "...KK333333KK...",
+    "..K3343333433K..",
+    "..K3433333343K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K4333333334K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K3333333333K..",
+    "..K4333333334K..",
+    "..KKKKKKKKKKKK..",
+    "...KK......KK...",
+    "................",
+]
+NPC_BLINK = NPC_BASE[:8] + ["....KWWWWWWK...."] + NPC_BASE[9:]
+
+
+def make_shrine():
+    """A small bronze bell hanging in a mossy stone arch (16x32)."""
+    img = Img(16, 32)
+    for y in range(32):
+        for x in range(16):
+            pillar = x in (0, 1, 2, 3, 12, 13, 14, 15) and y >= 6
+            arch = y < 8 and abs(x - 7.5) < 7.5 and math.hypot((x - 7.5) / 7.5, (y - 8) / 7) <= 1 and math.hypot((x - 7.5) / 5, (y - 8) / 5) > 1
+            base = y >= 27 and 0 <= x <= 15
+            if base:
+                img.set(x, y, "K" if y in (27, 31) or x in (0, 15) else ("3" if (x + y) % 5 else "4"))
+            elif pillar or arch:
+                img.set(x, y, "3" if hsh(x, y, 11) > 0.2 else "4")
+    # outline the stone
+    solid = [[img.px[y][x] is not None for x in range(16)] for y in range(32)]
+    for y in range(32):
+        for x in range(16):
+            if solid[y][x]:
+                edge = any(not (0 <= x + dx < 16 and 0 <= y + dy < 32 and solid[y + dy][x + dx]) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                if edge:
+                    img.set(x, y, "K")
+    # moss on the arch top
+    for x in range(3, 13):
+        for y in range(32):
+            if solid[y][x]:
+                img.set(x, max(0, y - 1), "M" if hsh(x, y, 4) > 0.3 else "n")
+                break
+    # rope + bell
+    for y in range(5, 10):
+        img.set(7, y, "a")
+    bell = [
+        "...KKK...",
+        "..KyyAK..",
+        ".KyYyAaK.",
+        ".KyyyAaK.",
+        ".KyyAAaK.",
+        "KyyyAAaaK",
+        "KKKKKKKKK",
+        "....K....",
+    ]
+    for dy, r in enumerate(bell):
+        for dx, k in enumerate(r):
+            img.set(3 + dx, 10 + dy, k)
     return img
 
 
@@ -782,6 +937,27 @@ if __name__ == "__main__":
     props.save(S("sprites", "props.png"))
     door = sheet([make_door(False), make_door(True)])
     door.save(S("sprites", "door.png"))
+    collectibles = sheet([from_grid(g) for g in (SHARD, NOTE, PAGE, KITE)])
+    collectibles.save(S("sprites", "collectibles.png"))
+    make_shrine().save(S("sprites", "shrine.png"))
+    sheet([from_grid(NPC_BASE), from_grid(NPC_BLINK)]).save(S("sprites", "npc.png"))
+
+    # editor tileset for Tiled: one tile per terrain type (the game autotiles the ground itself)
+    # order = Tiled tile ids 0..4: ground, one-way platform, spikes, pressure plate, door
+    editor = Img(16 * 5, 16)
+    editor.blit(tiles_img[15], 0, 0)
+    editor.blit(from_grid(PLATFORM), 16, 0)
+    editor.blit(from_grid(SPIKES), 32, 0)
+    editor.blit(from_grid(BUTTON_UP), 48, 0)
+    door_icon = make_door(False)
+    for y in range(16):
+        for x in range(16):
+            editor.px[y][64 + x] = door_icon.px[y + 8][x]
+    editor.save(S("levels", "terrain.png"))
+
+    from decor_art import build_decor, pack  # noqa: E402 (decor sprites live in their own file)
+    decor_atlas, decor_rects = pack(build_decor())
+    decor_atlas.save(S("sprites", "decor.png"))
 
     ui_atlas, ui_rects = build_ui()
     ui_atlas.save(S("ui", "ui.png"))
@@ -803,7 +979,7 @@ if __name__ == "__main__":
             "file": "sprites/player.png", "frame": [16, 16],
             "rows": {"normal": 0, "spent": 1, "power": 2},
             "animations": anims,
-            "fps": {"idle": 2, "run": 10, "jump": 1, "fall": 1, "dash": 1},
+            "fps": {"idle": 2, "run": 10, "jump": 1, "fall": 1, "dash": 1, "wall": 1},
         },
         "echo": {"file": "sprites/echo.png", "frame": [16, 16], "animations": anims, "drawAlpha": 0.65},
         "tiles": {
@@ -812,6 +988,10 @@ if __name__ == "__main__":
         },
         "props": {"file": "sprites/props.png", "frame": [16, 16], "order": [n for n, _ in prop_list]},
         "door": {"file": "sprites/door.png", "frame": [16, 32], "order": ["closed", "open"]},
+        "collectibles": {"file": "sprites/collectibles.png", "frame": [16, 16], "order": ["shard", "note", "page", "moment"]},
+        "shrine": {"file": "sprites/shrine.png", "frame": [16, 32]},
+        "decor": {"file": "sprites/decor.png", "rects": decor_rects, "_note": "names ending in _0/_1 are 2-frame animations"},
+        "npc": {"file": "sprites/npc.png", "frame": [16, 24], "order": ["idle", "blink"], "_note": "placeholder for every NPC until each gets its own sprite"},
         "ui": {"file": "ui/ui.png", "rects": ui_rects},
         "font": {"file": "ui/font.png", "glyph": [5, 7], "advance": 6, "order": FONT_ORDER, "uppercaseOnly": True},
         "title": {"file": "ui/title.png", "size": [title.w, title.h]},
