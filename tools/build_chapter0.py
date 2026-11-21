@@ -580,7 +580,7 @@ r.fill(58, 2, 58, 8)                   # second wall
 r.fill(66, 6, 66, 6)                   # one-tile stone
 r.fill(74, 2, 74, 9)                   # last wall
 r.fill(80, 8, 85, 9)                   # the page's ledge
-r.clear(88, 14, 90, 15)                # the drop back down onto the exit ledge
+r.clear(90, 14, 92, 15)                # the drop back down onto the exit ledge (cols 89-95)
 r.put(24, 10, "C")
 r.put(30, 10, "S")
 r.obj("page", 83, 7)
