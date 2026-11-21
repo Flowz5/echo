@@ -1,0 +1,13 @@
+{
+ "type": "world",
+ "onlyShowAdjacentMaps": false,
+ "maps": [
+  {
+   "fileName": "mech_test.tmj",
+   "x": 0,
+   "y": 0,
+   "width": 384,
+   "height": 224
+  }
+ ]
+}

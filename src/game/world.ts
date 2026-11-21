@@ -1,6 +1,6 @@
 import { TILE, manifest } from "../config";
 import { decorate } from "./decorate";
-import { Level, type Checkpoint, type Decor, type Entity, type Exit, type Point, type Props, type Tile } from "./level";
+import { Level, type Checkpoint, type Decor, type Entity, type Exit, type Flower, type Point, type Props, type Rect, type Tile } from "./level";
 import { parseAbilities, type Ability } from "./progress";
 
 /**
@@ -8,11 +8,13 @@ import { parseAbilities, type Ability } from "./progress";
  * Rooms touching each other are connected: walking off an edge leads into the neighbour.
  *
  * Tiled conventions (see assets/levels/README.md):
- *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door)
+ *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door, 5 crumble)
  *   - object layer "objects" with point objects of class:
  *       spawn, checkpoint, shrine, shard, note, page, moment, npc, text, lingering,
  *       deco (properties: sprite, layer = back/mid/front, flip),
- *       exit (properties: chapter, room, spawn; a point = its whole column, a rectangle = its area)
+ *       exit (properties: chapter, room, spawn; a point = its whole column, a rectangle = its area),
+ *       flower (point: its centre), vent (rectangle: the air column, grate at the bottom),
+ *       drift (rectangle: a low-gravity zone)
  *   - optional map property "echoes" (int): max echoes in the room
  *   - optional map property "title" (string): name shown when entering the room
  *   - optional map property "indoor" (bool): a stone back wall instead of the night sky
@@ -23,7 +25,7 @@ import { parseAbilities, type Ability } from "./progress";
 const WORLD_FILES = import.meta.glob("../../assets/levels/*.world", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 const MAP_FILES = import.meta.glob("../../assets/levels/*.tmj", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-const TILE_BY_ID: Tile[] = ["#", "-", "^", "b", "D"];
+const TILE_BY_ID: Tile[] = ["#", "-", "^", "b", "D", "="];
 const FLIP_MASK = 0x1fffffff;
 
 interface TiledProperty {
@@ -118,6 +120,10 @@ function parseMap(name: string, json: string): ParsedMap {
   const entities: Entity[] = [];
   const decor: Decor[] = [];
   const exits: Exit[] = [];
+  const flowers: Flower[] = [];
+  const vents: Rect[] = [];
+  const drifts: Rect[] = [];
+  const rectOf = (o: TiledObject): Rect | null => (o.width && o.height ? { x: o.x, y: o.y, w: o.width, h: o.height } : null);
   for (const layer of map.layers) {
     if (layer.type !== "objectgroup") continue;
     for (const o of layer.objects ?? []) {
@@ -125,6 +131,12 @@ function parseMap(name: string, json: string): ParsedMap {
       // points mark feet; for rectangles, use their bottom-centre
       const p = { x: o.x + (o.width ?? 0) / 2, y: o.y + (o.height ?? 0) };
       if (kind === "spawn") spawns.push(p);
+      else if (kind === "flower") flowers.push({ x: o.x, y: o.y });
+      else if (kind === "vent" || kind === "drift") {
+        const rect = rectOf(o);
+        if (!rect) console.warn(`${name}: ${kind} ${o.id} must be a rectangle`);
+        else (kind === "vent" ? vents : drifts).push(rect);
+      }
       else if (kind === "exit") {
         const pr = props(o.properties);
         if (typeof pr.chapter !== "string" || typeof pr.room !== "string") {
@@ -148,7 +160,7 @@ function parseMap(name: string, json: string): ParsedMap {
     }
   }
   const mapProps = props(map.properties);
-  const level = new Level(rows, { name, spawns, checkpoints, entities, exits });
+  const level = new Level(rows, { name, spawns, checkpoints, entities, exits, flowers, vents, drifts });
   level.decor = decor;
   return {
     level,

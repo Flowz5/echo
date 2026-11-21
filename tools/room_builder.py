@@ -48,6 +48,23 @@ class Room:
         (arriving on that room's spawn number `spawn`)."""
         self.obj("exit", x, y, chapter=chapter, room=room, spawn=spawn)
 
+    # ---- chapter 1 mechanics
+    def crumble(self, x0, x1, y):
+        """A crumble-stone slab (breaks as one when stood on)."""
+        self.fill(x0, y, x1, y, "=")
+
+    def flower(self, x, y):
+        """A dash flower centred in tile (x, y)."""
+        self.objects.append({"type": "flower", "at": (x, y), "center": True})
+
+    def vent(self, x, y_top, y_bottom, w=1):
+        """A wind vent: the air column covers rows y_top..y_bottom, w tiles wide from column x; grate at the bottom."""
+        self.objects.append({"type": "vent", "at": (x, y_top), "size": (w, y_bottom - y_top + 1)})
+
+    def drift(self, x0, y0, x1, y1):
+        """A Drift fracture zone (low gravity) over tiles x0..x1, y0..y1."""
+        self.objects.append({"type": "drift", "at": (x0, y0), "size": (x1 - x0 + 1, y1 - y0 + 1)})
+
     def text(self, x, y, text):
         self.obj("text", x, y, text=text)
 

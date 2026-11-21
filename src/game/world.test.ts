@@ -19,4 +19,14 @@ describe("world", () => {
     expect(exit).toMatchObject({ chapter: "chapter0", room: "overlook", spawn: 1 });
     expect(new World("chapter0").room("overlook")!.level.spawns).toHaveLength(2);
   });
+
+  it("parses crumble, flowers, vents and drift", () => {
+    const r = new World("mechanics").room("mech_test")!;
+    expect(r.level.ownTile(6, 10)).toBe("=");
+    expect(r.level.ownTile(9, 10)).toBe("=");
+    expect(r.level.mech.runs).toHaveLength(1);
+    expect(r.level.flowers).toEqual([{ x: 216, y: 136 }]);
+    expect(r.level.vents).toEqual([{ x: 256, y: 64, w: 16, h: 144 }]);
+    expect(r.level.drifts).toEqual([{ x: 304, y: 32, w: 64, h: 176 }]);
+  });
 });

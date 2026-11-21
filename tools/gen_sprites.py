@@ -380,6 +380,27 @@ PLATFORM = [
 ] + ["." * 16] * 8
 
 
+# crumble stone (chapter 1): a cut block, cracked through, no grass — must never read as ground
+CRUMBLE = [
+    "KKKKKKKKKKKKKKKK",
+    "K44444K444444444",
+    "K43333K333K33334",
+    "K3333K333K333334",
+    "K3333K3333K33334",
+    "KKKKKKK33K3K3334",
+    "K33343K3K33KKKKK",
+    "K3333K3K3333K334",
+    "K333K3333333K334",
+    "K3K33K33333K3334",
+    "KK3333K333K33334",
+    "K33333K33K333334",
+    "K3333K3333K33334",
+    "K333K33333K33334",
+    "K2222K22222K2222",
+    "KKKKKKKKKKKKKKKK",
+]
+
+
 def make_door(open_):
     img = Img(16, 32)
     for y in range(32):
@@ -946,8 +967,8 @@ if __name__ == "__main__":
     sheet([from_grid(g) for g in build_lumi()]).save(S("sprites", "lumi.png"))
 
     # editor tileset for Tiled: one tile per terrain type (the game autotiles the ground itself)
-    # order = Tiled tile ids 0..4: ground, one-way platform, spikes, pressure plate, door
-    editor = Img(16 * 5, 16)
+    # order = Tiled tile ids 0..5: ground, one-way platform, spikes, pressure plate, door, crumble
+    editor = Img(16 * 6, 16)
     editor.blit(tiles_img[15], 0, 0)
     editor.blit(from_grid(PLATFORM), 16, 0)
     editor.blit(from_grid(SPIKES), 32, 0)
@@ -956,6 +977,7 @@ if __name__ == "__main__":
     for y in range(16):
         for x in range(16):
             editor.px[y][64 + x] = door_icon.px[y + 8][x]
+    editor.blit(from_grid(CRUMBLE), 80, 0)
     editor.save(S("levels", "terrain.png"))
 
     from decor_art import build_decor, pack  # noqa: E402 (decor sprites live in their own file)
