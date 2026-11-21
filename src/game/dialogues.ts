@@ -44,6 +44,7 @@ export function quillFirst(): Line[] {
         },
         {
           label: "SHOW ME THE MAP",
+          effect: "revealMap",
           reply: [
             ...say(QUILL, "HERE. EVERYTHING I'VE DRAWN SO FAR. IF YOU FIND ANY LOOSE PAGES LYING ABOUT, BRING THEM. PAPER IS PRECIOUS."),
             ...say(SYSTEM, "MAP UPDATED."),
