@@ -739,7 +739,7 @@ export class GameScene implements Scene {
   private shrines(): ShrineSpot[] {
     const out: ShrineSpot[] = [];
     for (const r of this.world.rooms)
-      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
+      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ chapter: r.chapter, room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
     return out;
   }
 
