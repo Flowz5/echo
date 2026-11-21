@@ -1,6 +1,7 @@
 import { TILE } from "../config";
 import type { Draw } from "../engine/draw";
 import type { CollectibleKind } from "./progress";
+import { Mechanics } from "./mechanics";
 
 /**
  * Tile legend:
@@ -9,6 +10,7 @@ import type { CollectibleKind } from "./progress";
  *   ^  spikes
  *   b  pressure plate (held down by Iris or an echo standing on it)
  *   D  door (solid while closed; stack two for a 2-tile door). Doors open while any plate is held
+ *   =  crumble stone (a horizontal run breaks as one slab when stood on; see mechanics.ts)
  *   P  player spawn (ASCII drafts only; Tiled rooms use "spawn" point objects)
  *   .  empty
  * Outside the room, edges lead into the neighbouring room when there is one (see World);
@@ -16,7 +18,13 @@ import type { CollectibleKind } from "./progress";
  *
  * Points (spawns, checkpoints) are "feet" positions: the bottom-centre of what stands there.
  */
-export type Tile = "#" | "-" | "^" | "b" | "D" | ".";
+export type Tile = "#" | "-" | "^" | "b" | "D" | "=" | ".";
+
+/** A dash flower (point = its centre). */
+export interface Flower {
+  x: number;
+  y: number;
+}
 
 export interface Rect {
   x: number;
@@ -77,6 +85,9 @@ export class Level {
   readonly entities: Entity[];
   /** chapter exits, as room-local rects */
   readonly exits: Exit[];
+  readonly flowers: Flower[];
+  /** crumble stones and flowers over time */
+  readonly mech: Mechanics;
   /** hand-placed (Tiled "deco" objects) + procedural decorations */
   decor: Decor[] = [];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
@@ -97,6 +108,7 @@ export class Level {
       checkpoints?: (Point & { kind?: Checkpoint["kind"] })[];
       entities?: Entity[];
       exits?: Exit[];
+      flowers?: Flower[];
     } = {},
   ) {
     this.name = opts.name ?? "room";
@@ -123,6 +135,8 @@ export class Level {
     this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ kind: "crystal" as const, ...c, active: false }));
     this.entities = opts.entities ?? [];
     this.exits = opts.exits ?? [];
+    this.flowers = opts.flowers ?? [];
+    this.mech = new Mechanics(Mechanics.findRuns(this.tiles), this.flowers);
   }
 
   /** Default spawn (first one). */
@@ -168,7 +182,7 @@ export class Level {
   }
 
   solidAt(r: Rect): boolean {
-    return this.overlapping(r, (t) => t === "#" || (t === "D" && !this.doorsOpen));
+    return this.overlapping(r, (t, tx, ty) => t === "#" || (t === "=" && this.mech.crumbleSolid(tx, ty)) || (t === "D" && !this.doorsOpen));
   }
 
   /** True if a rect whose bottom edge is at `bottom` stands exactly on a one-way platform. */
