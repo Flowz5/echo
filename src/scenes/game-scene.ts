@@ -142,8 +142,8 @@ export class GameScene implements Scene {
         { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
         { kind: "action", label: "MAP", run: () => this.openMap() },
         { kind: "action", label: "RESTART ROOM", run: () => this.restartRoom() },
-        { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
-        { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
+        { kind: "action", label: "SETTINGS", run: () => (this.clearDrift(), ctx.scenes.go("settings")) },
+        { kind: "action", label: "MAIN MENU", run: () => (this.clearDrift(), ctx.scenes.go("main", { fade: true })) },
       ],
       { style: "center", cx: WIDTH / 2, y: 70, rowH: 16 },
     );
@@ -187,6 +187,7 @@ export class GameScene implements Scene {
     this.mapOpen = false;
     this.fastTravel = null;
     this.chapterChange = null;
+    this.clearDrift();
     this.moment = null;
     this.conversation = null;
     this.banner = this.popup = null;
@@ -895,6 +896,12 @@ export class GameScene implements Scene {
       this.ctx.audio.setFiltered(inDrift);
       if (inDrift) this.ctx.sfx("driftIn");
     }
+  }
+
+  /** Leaving play (menus, a new run): the music is never left muffled; the next game frame re-checks Drift. */
+  private clearDrift(): void {
+    this.inDrift = false;
+    this.ctx.audio.setFiltered(false);
   }
 
   /** Feedback for a flower just used: petals and a pop. */

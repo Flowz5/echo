@@ -75,4 +75,14 @@ describe("fields", () => {
     expect(player.canDash).toBe(true);
     expect(player.canDoubleJump).toBe(false);
   });
+
+  it("Drift blends in over 0.1 s, not longer", () => {
+    const { player, input } = playerIn(SHAFT, { drifts: [{ x: 0, y: 0, w: 160, h: 58 * 16 }] });
+    const factor = () => (player as unknown as { gravityFactor: number }).gravityFactor;
+    step(player, input, 3);
+    expect(factor()).toBeLessThan(1);
+    expect(factor()).toBeGreaterThan(0.45);
+    step(player, input, 4); // 7 frames ≈ 0.117 s
+    expect(factor()).toBe(0.45);
+  });
 });

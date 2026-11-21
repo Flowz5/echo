@@ -2,7 +2,7 @@ import { COLORS, manifest } from "../config";
 import type { SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
-import type { Rect } from "./level";
+import { DRIFT_FALL, DRIFT_GRAVITY, type Rect } from "./level";
 import type { Effects } from "./particles";
 import type { Ability } from "./progress";
 import type { Collider } from "./room";
@@ -500,9 +500,9 @@ export class Player {
     this.varJumpTimer = Math.max(0, this.varJumpTimer - dt);
     // Drift blends in and out over DRIFT_BLEND s; vents lift directly
     const field = this.level.fieldAt(this.hitbox);
-    const k = Math.min(1, dt / DRIFT_BLEND);
-    this.gravityFactor += (field.gravity - this.gravityFactor) * (Math.abs(field.gravity - this.gravityFactor) < 1e-4 ? 1 : k);
-    this.fallFactor += (field.fall - this.fallFactor) * (Math.abs(field.fall - this.fallFactor) < 1e-4 ? 1 : k);
+    // linear: the full change from normal air to Drift (or back) takes exactly DRIFT_BLEND s
+    this.gravityFactor = approach(this.gravityFactor, field.gravity, ((1 - DRIFT_GRAVITY) * dt) / DRIFT_BLEND);
+    this.fallFactor = approach(this.fallFactor, field.fall, ((1 - DRIFT_FALL) * dt) / DRIFT_BLEND);
     const apex = Math.abs(this.vy) < T.apexThreshold && this.jumpHeld;
     const g = (this.vy < 0 ? T.gravityUp : T.gravityDown) * (apex ? T.apexGravityMult : 1) * this.gravityFactor;
     if (this.wallSliding) {
