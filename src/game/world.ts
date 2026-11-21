@@ -2,6 +2,7 @@ import { TILE, manifest } from "../config";
 import { decorate } from "./decorate";
 import { Level, type Checkpoint, type Decor, type Entity, type Exit, type Flower, type Point, type Props, type Rect, type Tile } from "./level";
 import { parseAbilities, type Ability } from "./progress";
+import { chapterDef } from "./chapters";
 
 /**
  * Loads a chapter made in Tiled: a .world file placing rooms (.tmj maps) side by side.
@@ -208,9 +209,11 @@ export class World {
       };
     }
     // procedural dressing once neighbours are known (ground tops at room edges look right)
+    const look = chapterDef(worldName)?.look ?? "vale";
     for (const room of this.rooms) {
+      room.level.look = look;
       const handPlaced = room.level.decor.filter((d) => d.layer === "back");
-      room.level.decor = [...handPlaced, ...decorate(room.level, room.indoor), ...room.level.decor.filter((d) => d.layer !== "back")];
+      room.level.decor = [...handPlaced, ...decorate(room.level, room.indoor, look), ...room.level.decor.filter((d) => d.layer !== "back")];
     }
   }
 

@@ -8,11 +8,16 @@ export interface ChapterDef {
   /** shown on the chapter card and the map */
   title: string;
   music: TrackName;
+  /** how the chapter looks: ground tiles, far background, procedural dressing */
+  look: Look;
 }
 
+/** vale: grass and hills (chapter 0); ruins: cut stone and moss, the ruined town across the gorge (chapter 1) */
+export type Look = "vale" | "ruins";
+
 export const CHAPTERS: ChapterDef[] = [
-  { id: "chapter0", number: 0, title: "THE QUIET VALE", music: "vale" },
-  { id: "chapter1", number: 1, title: "STARFALL RUINS", music: "ruins" },
+  { id: "chapter0", number: 0, title: "THE QUIET VALE", music: "vale", look: "vale" },
+  { id: "chapter1", number: 1, title: "STARFALL RUINS", music: "ruins", look: "ruins" },
 ];
 
 export function chapterDef(id: string): ChapterDef | null {

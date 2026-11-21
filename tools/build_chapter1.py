@@ -21,8 +21,13 @@ r.fill(0, 0, 0, 10)                    # cliff above the way back
 r.spikes(17, 22, 14)                   # the gap
 r.put(3, 14, "S")
 r.exit(0, 14, "chapter0", "overlook", spawn=1)
-r.deco("ruin_pillar", 8, 15, "back")
-r.deco("ruin_pillar", 30, 15, "back")
+r.deco("ruin_house", 9, 15, "back")
+r.deco("pillar_tall", 22, 15, "back")
+r.deco("lantern_post_bent", 13, 15)
+r.deco("rubble_m", 15, 15)
+r.deco("balustrade", 26, 15)
+r.deco("bell_fallen", 33, 15, "back")
+r.deco("rose_bush", 37, 15)
 rooms.append(r)
 
 # Ruins Shrine: a Bell Shrine to test fast travel across chapters.
@@ -30,7 +35,10 @@ r = Room("ruins_shrine", "Ruins Shrine", 24, 16, (40, 0))
 r.ground(0, 23, 15)
 r.fill(23, 0, 23, 14)
 r.put(12, 14, "H")
-r.deco("ruin_pillar", 5, 15, "back")
+r.deco("ruin_arch", 6, 15, "back")
+r.deco("statue", 18, 15, "back")
+r.deco("column_fallen", 4, 15)
+r.deco("rubble_l", 20, 15)
 rooms.append(r)
 
 write_world("chapter1", [room.export() for room in rooms])

@@ -29,4 +29,13 @@ describe("world", () => {
     expect(r.level.vents).toEqual([{ x: 256, y: 64, w: 16, h: 144 }]);
     expect(r.level.drifts).toEqual([{ x: 304, y: 32, w: 64, h: 176 }]);
   });
+
+  it("chapter 1 rooms use the ruins look: stone tiles and moss, not grass", () => {
+    const gate = new World("chapter1").room("gorge_gate")!.level;
+    expect(gate.look).toBe("ruins");
+    const sprites = gate.decor.map((d) => d.sprite);
+    expect(sprites.some((s) => s.startsWith("moss"))).toBe(true);
+    expect(sprites.some((s) => s.startsWith("grass"))).toBe(false);
+    expect(new World("chapter0").room("lanternrest")!.level.look).toBe("vale");
+  });
 });

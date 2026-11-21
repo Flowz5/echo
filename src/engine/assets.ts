@@ -2,6 +2,7 @@ import { manifest } from "../config";
 import playerUrl from "../../assets/sprites/player.png";
 import echoUrl from "../../assets/sprites/echo.png";
 import tilesUrl from "../../assets/sprites/tiles.png";
+import tilesRuinsUrl from "../../assets/sprites/tiles_ruins.png";
 import propsUrl from "../../assets/sprites/props.png";
 import doorUrl from "../../assets/sprites/door.png";
 import collectiblesUrl from "../../assets/sprites/collectibles.png";
@@ -16,11 +17,13 @@ import titleUrl from "../../assets/ui/title.png";
 import skyUrl from "../../assets/backgrounds/sky.png";
 import mountainsUrl from "../../assets/backgrounds/mountains.png";
 import hillsUrl from "../../assets/backgrounds/hills.png";
+import ruinsUrl from "../../assets/backgrounds/ruins.png";
 
 const URLS = {
   player: playerUrl,
   echo: echoUrl,
   tiles: tilesUrl,
+  tilesRuins: tilesRuinsUrl,
   props: propsUrl,
   door: doorUrl,
   collectibles: collectiblesUrl,
@@ -35,6 +38,7 @@ const URLS = {
   sky: skyUrl,
   mountains: mountainsUrl,
   hills: hillsUrl,
+  ruins: ruinsUrl,
 };
 
 export type Images = Record<keyof typeof URLS, HTMLImageElement>;

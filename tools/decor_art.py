@@ -436,6 +436,8 @@ def build_decor():
     d["cobweb"] = cobweb()
     d["stalactite"] = stalactite()
     d["crystals"] = crystals()
+    from ruins_art import build_ruins_decor  # noqa: E402 (chapter 1 sprites live in their own file)
+    d.update(build_ruins_decor())
     return d
 
 

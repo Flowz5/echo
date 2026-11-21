@@ -620,7 +620,9 @@ export class GameScene implements Scene {
     // parallax backdrop follows the world camera, so it flows across rooms
     ctx.drawImage(img.sky, 0, 0);
     this.layer(img.mountains, manifest.backgrounds.mountains.parallax, camX + this.current.x, camY + this.current.y);
-    this.layer(img.hills, manifest.backgrounds.hills.parallax, camX + this.current.x, camY + this.current.y);
+    // the near far-layer: hills in the Vale, the ruined town across the gorge in chapter 1
+    const near = this.level.look === "ruins" ? img.ruins : img.hills;
+    this.layer(near, manifest.backgrounds.hills.parallax, camX + this.current.x, camY + this.current.y);
     if (this.transition?.from.indoor) this.backWall(this.transition.from, camX, camY);
     if (this.current.indoor) this.backWall(this.current, camX, camY);
 

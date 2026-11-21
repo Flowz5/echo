@@ -113,6 +113,8 @@ export class Level {
   readonly drifts: Rect[];
   /** crumble stones and flowers over time */
   readonly mech: Mechanics;
+  /** ground tile style (set by World from the chapter) */
+  look: "vale" | "ruins" = "vale";
   /** hand-placed (Tiled "deco" objects) + procedural decorations */
   decor: Decor[] = [];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
@@ -267,7 +269,7 @@ export class Level {
         if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue;
         const sx = tx * TILE - camX;
         const sy = ty * TILE - camY;
-        if (t === "#") draw.frame(draw.img.tiles, this.mask(tx, ty), sx, sy);
+        if (t === "#") draw.frame(this.look === "ruins" ? draw.img.tilesRuins : draw.img.tiles, this.mask(tx, ty), sx, sy);
         else if (t === "^") draw.frame(draw.img.props, 0, sx, sy);
         else if (t === "-") draw.frame(draw.img.props, 5, sx, sy);
         else if (t === "b") draw.frame(draw.img.props, this.platesPressed[plate - 1] ? 2 : 1, sx, sy);
