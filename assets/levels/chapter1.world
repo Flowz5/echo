@@ -59,8 +59,29 @@
    "height": 512
   },
   {
+   "fileName": "lantern_market.tmj",
+   "x": 1280,
+   "y": -2208,
+   "width": 640,
+   "height": 256
+  },
+  {
+   "fileName": "one_more_bug.tmj",
+   "x": 960,
+   "y": -2160,
+   "width": 320,
+   "height": 208
+  },
+  {
+   "fileName": "long_bridge.tmj",
+   "x": 1920,
+   "y": -2208,
+   "width": 640,
+   "height": 256
+  },
+  {
    "fileName": "ruins_shrine.tmj",
-   "x": 1408,
+   "x": 2560,
    "y": -2208,
    "width": 384,
    "height": 256
