@@ -1,5 +1,5 @@
 import { Echo } from "./echo";
-import { overlaps, type Level, type Rect } from "./level";
+import { overlaps, type Field, type Level, type Rect } from "./level";
 
 /** What the player collides with: the level's tiles plus the solid echoes. */
 export interface Collider {
@@ -8,6 +8,8 @@ export interface Collider {
   solidAt(r: Rect): boolean;
   platformBelow(x: number, w: number, bottom: number): boolean;
   hazardAt(r: Rect): boolean;
+  /** Drift and vents where a rect is */
+  fieldAt(r: Rect): Field;
 }
 
 /** A playable room: its level, the echoes left in it, plates and doors. */
@@ -39,6 +41,10 @@ export class Room implements Collider {
 
   hazardAt(r: Rect): boolean {
     return this.level.hazardAt(r);
+  }
+
+  fieldAt(r: Rect): Field {
+    return this.level.fieldAt(r);
   }
 
   /** Adds an echo; returns the one that had to shatter to make room, if any. */

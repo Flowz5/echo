@@ -20,6 +20,21 @@ import { Mechanics } from "./mechanics";
  */
 export type Tile = "#" | "-" | "^" | "b" | "D" | "=" | ".";
 
+/** What the air does to Iris where she is: gravity and fall-cap multipliers (Drift), vent lift. */
+export interface Field {
+  gravity: number;
+  fall: number;
+  /** upward acceleration (px/s²) */
+  lift: number;
+  /** the lift never pushes faster up than this (px/s) */
+  liftCap: number;
+}
+export const NEUTRAL_FIELD: Field = { gravity: 1, fall: 1, lift: 0, liftCap: 0 };
+export const DRIFT_GRAVITY = 0.45;
+export const DRIFT_FALL = 0.6;
+export const VENT_LIFT = 1700;
+export const VENT_CAP = 200;
+
 /** A dash flower (point = its centre). */
 export interface Flower {
   x: number;
@@ -86,6 +101,10 @@ export class Level {
   /** chapter exits, as room-local rects */
   readonly exits: Exit[];
   readonly flowers: Flower[];
+  /** wind vent air columns (the grate is the bottom edge) */
+  readonly vents: Rect[];
+  /** Drift fracture zones (low gravity) */
+  readonly drifts: Rect[];
   /** crumble stones and flowers over time */
   readonly mech: Mechanics;
   /** hand-placed (Tiled "deco" objects) + procedural decorations */
@@ -109,6 +128,8 @@ export class Level {
       entities?: Entity[];
       exits?: Exit[];
       flowers?: Flower[];
+      vents?: Rect[];
+      drifts?: Rect[];
     } = {},
   ) {
     this.name = opts.name ?? "room";
@@ -136,6 +157,8 @@ export class Level {
     this.entities = opts.entities ?? [];
     this.exits = opts.exits ?? [];
     this.flowers = opts.flowers ?? [];
+    this.vents = opts.vents ?? [];
+    this.drifts = opts.drifts ?? [];
     this.mech = new Mechanics(Mechanics.findRuns(this.tiles), this.flowers);
   }
 
@@ -183,6 +206,21 @@ export class Level {
 
   solidAt(r: Rect): boolean {
     return this.overlapping(r, (t, tx, ty) => t === "#" || (t === "=" && this.mech.crumbleSolid(tx, ty)) || (t === "D" && !this.doorsOpen));
+  }
+
+  /** Drift if the rect's centre is in a zone; vent lift if it overlaps a column. */
+  fieldAt(r: Rect): Field {
+    if (this.vents.length === 0 && this.drifts.length === 0) return NEUTRAL_FIELD;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const drift = this.drifts.some((d) => cx >= d.x && cx < d.x + d.w && cy >= d.y && cy < d.y + d.h);
+    const vent = this.vents.some((v) => overlaps(r, v));
+    return {
+      gravity: drift ? DRIFT_GRAVITY : 1,
+      fall: drift ? DRIFT_FALL : 1,
+      lift: vent ? VENT_LIFT : 0,
+      liftCap: vent ? VENT_CAP : 0,
+    };
   }
 
   /** True if a rect whose bottom edge is at `bottom` stands exactly on a one-way platform. */
