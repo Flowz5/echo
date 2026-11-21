@@ -8,6 +8,7 @@ import { keyName } from "../engine/input";
 import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
+import type { SaveData } from "../game/save";
 import { World, type RoomDef } from "../game/world";
 import { drawDialogueBox } from "../ui/dialogue-box";
 import { OptionList } from "../ui/option-list";
@@ -87,6 +88,10 @@ export class GameScene implements Scene {
   private conversation: Conversation | null = null;
   /** NPCs already talked to this run: they say their short repeat line next time */
   private readonly talked = new Set<string>();
+  /** rooms entered at least once this save (for the map) */
+  private readonly visited = new Set<string>();
+  /** seconds of actual play on this save */
+  private playTime = 0;
   private debug = false;
   private t = 0;
   private roomNameTimer = 0;
@@ -122,7 +127,7 @@ export class GameScene implements Scene {
   enter(from: ScreenName | null): void {
     if (from === "settings") return; // back from the pause menu's settings: keep the run
     this.ctx.audio.playMusic("vale");
-    this.startRun();
+    this.startRun(this.ctx.session.data);
   }
 
   private setPaused(paused: boolean): void {
@@ -130,17 +135,53 @@ export class GameScene implements Scene {
     this.ctx.audio.setDucked(paused);
   }
 
-  /** A fresh run from the first room: checkpoints forgotten. */
-  private startRun(): void {
+  /** A run from a save (or a new game from the first room when there is none). */
+  private startRun(save: SaveData | null = null): void {
     for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
     this.lastCheckpoint.clear();
     this.talked.clear();
+    this.visited.clear();
     this.conversation = null;
-    this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
     this.banner = this.popup = null;
-    this.setRoom(this.world.startRoom);
-    this.respawnPoint = this.level.spawn;
+    this.playTime = save?.playTime ?? 0;
+    if (!save) {
+      this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
+      this.setRoom(this.world.startRoom);
+      this.respawnPoint = this.level.spawn;
+      this.restartRoom();
+      return;
+    }
+    this.progress.restore(save.abilities, save.echoSlots, save.secured);
+    const lit = new Set(save.lit);
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => (c.active = lit.has(`${r.name}:${i}`)));
+    for (const [room, point] of Object.entries(save.lastCheckpoint)) this.lastCheckpoint.set(room, point);
+    for (const key of save.talked) this.talked.add(key);
+    for (const name of save.visited) this.visited.add(name);
+    const room = this.world.rooms.find((r) => r.name === save.room);
+    this.setRoom(room ?? this.world.startRoom); // a room removed since the save: back to the start
+    this.respawnPoint = room ? save.point : this.level.spawn;
     this.restartRoom();
+  }
+
+  /** Everything needed to resume later, at the current respawn point. */
+  private buildSave(): SaveData {
+    const lit: string[] = [];
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.push(`${r.name}:${i}`));
+    return {
+      version: 1,
+      room: this.current.name,
+      roomTitle: this.current.title,
+      point: { ...this.respawnPoint },
+      abilities: [...this.progress.abilities],
+      echoSlots: this.progress.echoSlots,
+      secured: this.progress.securedEntries(),
+      lit,
+      lastCheckpoint: Object.fromEntries(this.lastCheckpoint),
+      talked: [...this.talked],
+      visited: [...this.visited],
+      playTime: Math.round(this.playTime),
+      savedAt: Date.now(),
+    };
   }
 
   /** Back to the respawn point of the current room, room state reset. */
@@ -170,6 +211,7 @@ export class GameScene implements Scene {
 
   private setRoom(def: RoomDef): void {
     this.current = def;
+    this.visited.add(def.name);
     this.room = new Room(def.level, this.echoLimit(def));
     this.player.setCollider(this.room);
     this.resetRoom();
@@ -190,6 +232,7 @@ export class GameScene implements Scene {
       this.pauseMenu.update();
       return;
     }
+    this.playTime += dt;
     if (this.conversation) {
       this.updateConversation(dt);
       return;
@@ -315,12 +358,18 @@ export class GameScene implements Scene {
     for (const c of this.level.checkpoints) {
       if (!overlaps(p.hitbox, Level.checkpointRect(c))) continue;
       p.refill();
+      const hadPending = this.progress.pending.length > 0;
       this.securePending();
       const point = { x: c.x, y: c.y };
+      const before = this.lastCheckpoint.get(this.current.name);
       this.respawnPoint = point;
       this.lastCheckpoint.set(this.current.name, point);
-      if (c.active) continue; // already lit: just moves the respawn point here
+      const moved = !before || before.x !== point.x || before.y !== point.y;
+      const lighting = !c.active;
       c.active = true;
+      // auto-save (crystals and shrines alike), only when something changed
+      if (lighting || moved || hadPending) this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+      if (!lighting) continue; // already lit: just moves the respawn point here
       this.ctx.sfx("checkpoint");
       this.fx.burst(c.x, c.y - 9, 18, { colors: [COLORS.C, COLORS.e, COLORS.E, COLORS.W], speed: 60, life: 0.6 });
     }

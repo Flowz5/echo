@@ -22,6 +22,17 @@ export class Progress {
     this.pending = [];
   }
 
+  /** Back to a saved state (pending collectibles are never saved). */
+  restore(abilities: Ability[], echoSlots: number, secured: [string, CollectibleKind][]): void {
+    this.reset(abilities, echoSlots);
+    for (const [key, kind] of secured) this.secured.set(key, kind);
+  }
+
+  /** Secured collectibles, for the save file. */
+  securedEntries(): [string, CollectibleKind][] {
+    return [...this.secured.entries()];
+  }
+
   has(a: Ability): boolean {
     return this.abilities.has(a);
   }

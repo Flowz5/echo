@@ -11,6 +11,8 @@ import { MainMenu } from "./scenes/main-menu";
 import { MenuBackground } from "./scenes/menu-background";
 import { SceneManager, type Ctx } from "./scenes/scene";
 import { SettingsMenu } from "./scenes/settings-menu";
+import { SlotsMenu } from "./scenes/slots-menu";
+import { SaveStore } from "./game/save";
 import { loadSettings, saveSettings } from "./settings";
 
 async function boot(): Promise<void> {
@@ -31,6 +33,8 @@ async function boot(): Promise<void> {
     scenes,
     bg: new MenuBackground(draw),
     audio,
+    saves: new SaveStore(),
+    session: { slot: 1, data: null },
     save: () => saveSettings(settings),
     sfx: (name) => audio.sfx(name),
   };
@@ -39,6 +43,7 @@ async function boot(): Promise<void> {
   scenes.register("settings", new SettingsMenu(ctx));
   scenes.register("controls", new ControlsMenu(ctx));
   scenes.register("credits", new Credits(ctx));
+  scenes.register("slots", new SlotsMenu(ctx));
   scenes.register("game", new GameScene(ctx));
   scenes.go("main");
   if (import.meta.env.DEV) Object.assign(window, { __echo: ctx }); // console debugging
