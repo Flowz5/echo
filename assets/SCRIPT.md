@@ -193,7 +193,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 - **Echo shield:** an echo blocks Stillness fog streams and moving hazards.
 - **Phase step** (chapter 4): ring a chime so echoes go intangible, pass through, and they become solid again behind you.
 
-### 4.3 Checkpoints & saving
+### 4.3 Checkpoints & saving ✅ (saving: 3 slots, auto-save at crystals and shrines)
 | Type | Look | Function |
 |---|---|---|
 | **Echo Crystal** | cyan crystal on a stone base, dim grey until touched ✅ sprite | Room checkpoint. On death, Iris respawns at the last touched crystal instantly. Touching one refills dash and double jump |
@@ -202,7 +202,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 
 - **Death** resets the current room: echoes, buttons, crumble blocks and enemies' positions. Everything since the last crystal is replayed.
 - **Collectibles** are only *secured* when Iris reaches the next crystal or shrine after picking them up (shown as a small icon following her until then).
-- **Saving:** 3 save slots, auto-save at every shrine and at chapter transitions. Stored locally.
+- **Saving:** 3 save slots, stored locally. **Every crystal and shrine touched auto-saves** (only when something changed: newly lit, new respawn point or collectibles secured); CONTINUE resumes at the last one. Saved: abilities, echo slots, secured collectibles, lit checkpoints, respawn point per room, NPCs talked to, visited rooms (for the map), play time. Pending collectibles are never saved. Chapter transitions will save too.
 - **Death counter and timer** per chapter, shown on the chapter end screen, never during play.
 
 ### 4.4 Collectibles
@@ -878,12 +878,25 @@ All in-game text is **English** and **uppercase** (bitmap font).
 Background: parallax night sky, Iris running and leaving echoes behind her. Title logo bobbing.
 ```
 ECHO
-  > PLAY
+  > CONTINUE          (only when a save exists: the last file played)
+    PLAY              (opens CHOOSE A FILE)
     SETTINGS
     CREDITS
 V0.1                     SPACE TO SELECT
 ```
-Planned: `CONTINUE` (when a save exists), `CHAPTER SELECT` (after chapter 0).
+Planned: `CHAPTER SELECT` (after chapter 0).
+
+### Choose a file ✅
+```
+CHOOSE A FILE
+  FILE 1                        EMPTY
+> FILE 2       THE THORN STEPS   0:42
+  FILE 3                        EMPTY
+  ERASE A FILE
+  BACK
+SHARDS 1   PAGES 2      (for the highlighted file)
+```
+Empty file = new game, full file = resume. ERASE A FILE, then pick a file and press again to confirm.
 
 ### Settings ✅
 ```
