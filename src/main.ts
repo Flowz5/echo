@@ -44,9 +44,10 @@ async function boot(): Promise<void> {
   scenes.register("controls", new ControlsMenu(ctx));
   scenes.register("credits", new Credits(ctx));
   scenes.register("slots", new SlotsMenu(ctx));
-  scenes.register("game", new GameScene(ctx));
+  const game = new GameScene(ctx);
+  scenes.register("game", game);
   scenes.go("main");
-  if (import.meta.env.DEV) Object.assign(window, { __echo: ctx }); // console debugging
+  if (import.meta.env.DEV) Object.assign(window, { __echo: ctx, __echoGame: game }); // console debugging, playtests
 
   canvas.focus();
   startLoop(

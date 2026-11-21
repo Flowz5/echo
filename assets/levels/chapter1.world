@@ -1,0 +1,20 @@
+{
+ "type": "world",
+ "onlyShowAdjacentMaps": false,
+ "maps": [
+  {
+   "fileName": "gorge_gate.tmj",
+   "x": 0,
+   "y": 0,
+   "width": 640,
+   "height": 256
+  },
+  {
+   "fileName": "ruins_shrine.tmj",
+   "x": 640,
+   "y": 0,
+   "width": 384,
+   "height": 256
+  }
+ ]
+}

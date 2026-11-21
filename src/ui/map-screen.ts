@@ -1,7 +1,7 @@
 import { C, COLORS, HEIGHT, WIDTH } from "../config";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
-import { cellState, mapBounds, shrineKey, type MapRoom, type ShrineSpot } from "../game/map";
+import { cellState, chapterTargets, mapBounds, shrineKey, type MapRoom, type ShrineSpot } from "../game/map";
 import type { RoomDef } from "../game/world";
 
 const SCALE = 3; // map pixels per tile
@@ -17,14 +17,27 @@ const INK_DARK = COLORS.K;
 const INK_FAINT = COLORS.g;
 const WASH = 0.22; // rock: a light wash of the sepia ink
 
-export interface MapOpenOptions {
-  visited: Set<string>;
+/** A chapter the map can show (one Iris has visited). */
+export interface MapChapter {
+  id: string;
+  number: number;
+  title: string;
+  rooms: RoomDef[];
+  /** Quill revealed this chapter's room outlines */
   revealed: boolean;
+}
+
+export interface MapOpenOptions {
+  /** visited chapters, in chapter order */
+  chapters: MapChapter[];
+  /** the chapter Iris is in */
+  current: string;
+  visited: Set<string>;
   lit: Set<string>;
   /** Iris, in world pixels */
   player: { x: number; y: number };
   currentRoom: string;
-  /** fast travel destinations (null = just browsing) */
+  /** fast travel destinations in every chapter (null = just browsing) */
   travel: ShrineSpot[] | null;
   /** key names shown in the footer */
   keys: { map: string; jump: string };
@@ -32,21 +45,42 @@ export interface MapOpenOptions {
 
 export type MapResult = { close: true } | { travel: ShrineSpot } | null;
 
-/** The chapter map overlay: Quill's drawing of the rooms, icons, and the fast-travel picker. */
+/**
+ * The chapter map overlay: Quill's drawing of the rooms, icons, and the fast-travel picker.
+ * Left/right past the edge of the drawing (or past the first/last shrine when travelling)
+ * turns to the previous/next visited chapter.
+ */
 export class MapScreen {
-  private readonly bounds;
+  private bounds = { x: 0, y: 0, w: 1, h: 1 };
+  private rooms: RoomDef[] = [];
   private cache: HTMLCanvasElement | null = null;
   private opts: MapOpenOptions | null = null;
+  /** index of the chapter shown, in opts.chapters */
+  private shown = 0;
   private camX = 0;
   private camY = 0;
+  /** index of the chosen shrine among the shown chapter's targets */
   private pick = 0;
 
-  constructor(
-    private readonly draw: Draw,
-    private readonly rooms: RoomDef[],
-    private readonly title: string,
-  ) {
-    this.bounds = mapBounds(rooms.map((r) => this.tileRect(r)));
+  constructor(private readonly draw: Draw) {}
+
+  private get chapter(): MapChapter | null {
+    return this.opts?.chapters[this.shown] ?? null;
+  }
+
+  /** Travel targets in the shown chapter. */
+  private get targets(): ShrineSpot[] {
+    const ch = this.chapter;
+    return ch && this.opts?.travel ? chapterTargets(this.opts.travel, ch.id) : [];
+  }
+
+  private show(index: number): void {
+    const opts = this.opts!;
+    this.shown = index;
+    this.rooms = opts.chapters[index].rooms;
+    this.bounds = mapBounds(this.rooms.map((r) => this.tileRect(r)));
+    this.cache = this.drawRooms(opts);
+    this.pick = 0;
   }
 
   private tileRect(r: RoomDef): MapRoom {
@@ -60,9 +94,9 @@ export class MapScreen {
 
   open(opts: MapOpenOptions): void {
     this.opts = opts;
-    this.pick = 0;
-    this.cache = this.drawRooms(opts);
-    const focus = opts.travel?.length ? opts.travel[0] : opts.player;
+    if (opts.chapters.length === 0) return;
+    this.show(Math.max(0, opts.chapters.findIndex((c) => c.id === opts.current)));
+    const focus = this.targets[0] ?? opts.player;
     this.centerOn(focus.x, focus.y);
   }
 
@@ -90,8 +124,9 @@ export class MapScreen {
       ctx.fillStyle = color;
       ctx.fillRect(x, y, 1, 1);
     };
+    const revealed = this.chapter?.revealed ?? false;
     for (const r of this.rooms) {
-      const state = cellState(r.name, opts.visited, opts.revealed);
+      const state = cellState(r.name, opts.visited, revealed);
       if (state === "hidden") continue;
       const o = this.toMap(r.x, r.y);
       const w = r.level.cols * SCALE;
@@ -145,15 +180,30 @@ export class MapScreen {
 
   update(dt: number, input: Input): MapResult {
     const opts = this.opts;
-    if (!opts) return { close: true };
+    if (!opts || !this.chapter) return { close: true };
     if (input.justPressed("map") || input.justPressed("pause") || input.justPressed("back")) return { close: true };
-    const targets = opts.travel ?? [];
-    if (targets.length > 0) {
-      if (input.pressedOrRepeat("left")) this.pick = (this.pick + targets.length - 1) % targets.length;
-      if (input.pressedOrRepeat("right")) this.pick = (this.pick + 1) % targets.length;
-      const t = targets[this.pick];
-      this.centerOn(t.x, t.y);
-      if (input.justPressed("jump") || input.justPressed("interact")) return { travel: t };
+    if (opts.travel?.length) {
+      // choosing a shrine: past the first/last one, the previous/next chapter
+      if (input.pressedOrRepeat("left")) this.step(-1);
+      else if (input.pressedOrRepeat("right")) this.step(1);
+      const t = this.targets[this.pick];
+      if (t) {
+        this.centerOn(t.x, t.y);
+        if (input.justPressed("jump") || input.justPressed("interact")) return { travel: t };
+      }
+      return null;
+    }
+    // browsing: pan; a fresh press against the edge turns the page
+    if (input.justPressed("left") && this.camX <= 0 && this.shown > 0) {
+      this.show(this.shown - 1);
+      this.camX = this.clampX(Infinity);
+      this.camY = this.clampY(this.camY);
+      return null;
+    }
+    if (input.justPressed("right") && this.camX >= this.clampX(Infinity) && this.shown < opts.chapters.length - 1) {
+      this.show(this.shown + 1);
+      this.camX = 0;
+      this.camY = this.clampY(this.camY);
       return null;
     }
     const mx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
@@ -163,13 +213,41 @@ export class MapScreen {
     return null;
   }
 
+  /** Travel picker: the next/previous shrine, turning to another chapter past the ends (wrapping when alone). */
+  private step(dir: -1 | 1): void {
+    const n = this.targets.length;
+    const next = this.pick + dir;
+    if (next >= 0 && next < n) {
+      this.pick = next;
+      return;
+    }
+    const chapters = this.opts!.chapters.length;
+    const other = this.shown + dir;
+    if (other >= 0 && other < chapters) {
+      this.show(other);
+      this.pick = dir < 0 ? Math.max(0, this.targets.length - 1) : 0;
+      if (!this.targets.length) this.centerOn(...this.middle());
+    } else if (n > 0) this.pick = dir < 0 ? n - 1 : 0;
+  }
+
+  /** The middle of the shown chapter, in world pixels. */
+  private middle(): [number, number] {
+    return [(this.bounds.x + this.bounds.w / 2) * TILE, (this.bounds.y + this.bounds.h / 2) * TILE];
+  }
+
   render(t: number): void {
     const { draw } = this;
     const opts = this.opts;
-    if (!opts || !this.cache) return;
+    const chapter = this.chapter;
+    if (!opts || !this.cache || !chapter) return;
     draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.75);
     this.drawSheet();
-    draw.text(this.title, WIDTH / 2, SHEET.y + 6, INK_DARK, { align: "center", shadow: null });
+    const title = `CHAPTER ${chapter.number} - ${chapter.title}`;
+    draw.text(title, WIDTH / 2, SHEET.y + 6, INK_DARK, { align: "center", shadow: null });
+    const half = draw.textWidth(title) / 2;
+    if (this.shown > 0) draw.text("<", WIDTH / 2 - half - 14, SHEET.y + 6, INK, { shadow: null });
+    if (this.shown < opts.chapters.length - 1) draw.text(">", WIDTH / 2 + half + 9, SHEET.y + 6, INK, { shadow: null });
+    const isCurrent = chapter.id === opts.current;
 
     const ctx = draw.ctx;
     ctx.save();
@@ -181,7 +259,7 @@ export class MapScreen {
     ctx.drawImage(this.cache, ox, oy);
 
     // the room Iris is in: its frame inked solid
-    const here = this.rooms.find((r) => r.name === opts.currentRoom);
+    const here = isCurrent ? this.rooms.find((r) => r.name === opts.currentRoom) : undefined;
     if (here) {
       const o = this.toMap(here.x, here.y);
       ctx.globalAlpha = 0.6;
@@ -229,7 +307,7 @@ export class MapScreen {
     }
 
     // fast travel: the chosen shrine is circled
-    const targets = opts.travel ?? [];
+    const targets = this.targets;
     if (targets.length > 0) {
       const sel = targets[this.pick];
       const p = this.toMap(sel.x, sel.y);
@@ -241,7 +319,7 @@ export class MapScreen {
     }
 
     // Iris's Eye: you are here
-    if (Math.sin(t * 5) > -0.4) {
+    if (isCurrent && Math.sin(t * 5) > -0.4) {
       const p = this.toMap(opts.player.x, opts.player.y);
       const x = Math.round(ox + p.x);
       const y = Math.round(oy + p.y) - 4;
@@ -259,6 +337,9 @@ export class MapScreen {
       const room = this.rooms.find((r) => r.name === sel.room);
       draw.text(`TRAVEL TO ${(room?.title ?? sel.room).toUpperCase()}?`, WIDTH / 2, VIEW.y + VIEW.h + 4, INK_DARK, { align: "center", shadow: null });
       draw.text(`LEFT RIGHT CHOOSE   ${opts.keys.jump} TRAVEL   ${opts.keys.map} CLOSE`, WIDTH / 2, SHEET.y + SHEET.h - 10, INK_FAINT, { align: "center", shadow: null });
+    } else if (opts.travel?.length) {
+      draw.text("NO OTHER BELL RINGS HERE", WIDTH / 2, VIEW.y + VIEW.h + 4, INK_DARK, { align: "center", shadow: null });
+      draw.text(`LEFT RIGHT CHAPTER   ${opts.keys.map} CLOSE`, WIDTH / 2, SHEET.y + SHEET.h - 10, INK_FAINT, { align: "center", shadow: null });
     } else {
       draw.text(`ARROWS MOVE   ${opts.keys.map} CLOSE`, WIDTH / 2, SHEET.y + SHEET.h - 10, INK_FAINT, { align: "center", shadow: null });
     }

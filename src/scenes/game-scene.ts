@@ -2,25 +2,27 @@ import { C, COLORS, HEIGHT, STEP, WIDTH, manifest } from "../config";
 import { Conversation } from "../game/dialogue";
 import { NPC_DIALOGUES, lingeringLine } from "../game/dialogues";
 import { Echo } from "../game/echo";
-import { Level, overlaps, type Entity, type Point } from "../game/level";
+import { Level, overlaps, type Entity, type Exit, type Point } from "../game/level";
 import { Progress, type Ability, type CollectibleKind } from "../game/progress";
 import { keyName } from "../engine/input";
 import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import type { SaveData } from "../game/save";
+import { CHAPTERS, chapterDef } from "../game/chapters";
 import { World, type RoomDef } from "../game/world";
 import { MOMENT_COUNT, MomentScene } from "../game/lumi";
-import { travelTargets, shrineKey, type ShrineSpot } from "../game/map";
+import { travelTargets, shrineKey, visitedChapters, type ShrineSpot } from "../game/map";
 import { drawDialogueBox } from "../ui/dialogue-box";
 import { MapScreen } from "../ui/map-screen";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
-/** chapter to load: chapter0 by default, or ?world=playground for the movement test rooms */
-const WORLD = new URLSearchParams(location.search).get("world") ?? "chapter0";
-const CHAPTER_TITLES: Record<string, string> = { chapter0: "THE QUIET VALE" };
+/** every chapter by default, or only ?world=playground (the movement test rooms) */
+const ONLY_WORLD = new URLSearchParams(location.search).get("world");
 const TRAVEL_FADE = 0.35; // s, each way
+const CHAPTER_CARD_TIME = 2.5; // s the chapter title stays on black (first entry only)
+const CARD_SKIP_AFTER = 0.4; // s before the card can be skipped (so a held jump doesn't skip it)
 const RESPAWN_DELAY = 0.5;
 const CAMERA_LERP_X = 7; // higher = snappier
 const CAMERA_LERP_Y = 4.5;
@@ -70,7 +72,10 @@ interface Transition {
 }
 
 export class GameScene implements Scene {
-  private readonly world = new World(WORLD);
+  /** every chapter, built up front (rooms are small): lit shrines and maps of other chapters just work */
+  private readonly worlds = new Map((ONLY_WORLD ? [ONLY_WORLD] : CHAPTERS.map((c) => c.id)).map((id) => [id, new World(id)]));
+  /** the chapter Iris is in */
+  private world: World = this.firstWorld;
   private readonly progress = new Progress();
   private banner: { title: string; hint: string; t: number } | null = null;
   private popup: { kind: CollectibleKind; t: number } | null = null;
@@ -103,6 +108,8 @@ export class GameScene implements Scene {
   private moment: { scene: MomentScene; x: number; y: number } | null = null;
   /** fast travel in progress: fading out, then in at the destination */
   private fastTravel: { t: number; target: ShrineSpot; arrived: boolean } | null = null;
+  /** walking through a chapter exit: fade out, chapter card (first visit), fade in */
+  private chapterChange: { t: number; exit: Exit; arrived: boolean; card: number; cardT: number } | null = null;
   /** seconds of actual play on this save */
   private playTime = 0;
   private debug = false;
@@ -121,7 +128,7 @@ export class GameScene implements Scene {
     this.room = new Room(this.current.level, this.current.maxEchoes);
     this.respawnPoint = this.current.level.spawn;
     this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name), (a) => this.progress.has(a));
-    this.map = new MapScreen(ctx.draw, this.world.rooms, CHAPTER_TITLES[WORLD] ?? WORLD.toUpperCase());
+    this.map = new MapScreen(ctx.draw);
     this.pauseMenu = new OptionList(
       ctx,
       [
@@ -139,10 +146,23 @@ export class GameScene implements Scene {
     return this.current.level;
   }
 
+  private get firstWorld(): World {
+    return this.worlds.values().next().value!;
+  }
+
+  /** Rooms of every chapter (save state spans them all). */
+  private allRooms(): RoomDef[] {
+    return [...this.worlds.values()].flatMap((w) => w.rooms);
+  }
+
+  private playChapterMusic(): void {
+    this.ctx.audio.playMusic(chapterDef(this.world.id)?.music ?? "vale");
+  }
+
   enter(from: ScreenName | null): void {
     if (from === "settings") return; // back from the pause menu's settings: keep the run
-    this.ctx.audio.playMusic("vale");
     this.startRun(this.ctx.session.data);
+    this.playChapterMusic();
   }
 
   private setPaused(paused: boolean): void {
@@ -152,18 +172,20 @@ export class GameScene implements Scene {
 
   /** A run from a save (or a new game from the first room when there is none). */
   private startRun(save: SaveData | null = null): void {
-    for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
+    for (const r of this.allRooms()) for (const c of r.level.checkpoints) c.active = false;
     this.lastCheckpoint.clear();
     this.talked.clear();
     this.visited.clear();
     this.revealed.clear();
     this.mapOpen = false;
     this.fastTravel = null;
+    this.chapterChange = null;
     this.moment = null;
     this.conversation = null;
     this.banner = this.popup = null;
     this.playTime = save?.playTime ?? 0;
     if (!save) {
+      this.world = this.firstWorld;
       this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
       this.setRoom(this.world.startRoom);
       this.respawnPoint = this.level.spawn;
@@ -172,13 +194,15 @@ export class GameScene implements Scene {
     }
     this.progress.restore(save.abilities, save.echoSlots, save.secured);
     const lit = new Set(save.lit);
-    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => (c.active = lit.has(`${r.name}:${i}`)));
+    for (const r of this.allRooms()) r.level.checkpoints.forEach((c, i) => (c.active = lit.has(`${r.name}:${i}`)));
     for (const [room, point] of Object.entries(save.lastCheckpoint)) this.lastCheckpoint.set(room, point);
     for (const key of save.talked) this.talked.add(key);
     for (const name of save.visited) this.visited.add(name);
     for (const chapter of save.revealed ?? []) this.revealed.add(chapter);
-    const room = this.world.rooms.find((r) => r.name === save.room);
-    this.setRoom(room ?? this.world.startRoom); // a room removed since the save: back to the start
+    // a chapter or room that isn't there (removed since, or a ?world= run): back to the start
+    const room = this.worlds.get(save.chapter)?.room(save.room) ?? null;
+    this.world = room ? this.worlds.get(save.chapter)! : this.firstWorld;
+    this.setRoom(room ?? this.world.startRoom);
     this.respawnPoint = room ? save.point : this.level.spawn;
     this.restartRoom();
   }
@@ -186,9 +210,10 @@ export class GameScene implements Scene {
   /** Everything needed to resume later, at the current respawn point. */
   private buildSave(): SaveData {
     const lit: string[] = [];
-    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.push(`${r.name}:${i}`));
+    for (const r of this.allRooms()) r.level.checkpoints.forEach((c, i) => c.active && lit.push(`${r.name}:${i}`));
     return {
-      version: 1,
+      version: 2,
+      chapter: this.world.id,
       room: this.current.name,
       roomTitle: this.current.title,
       point: { ...this.respawnPoint },
@@ -258,6 +283,10 @@ export class GameScene implements Scene {
       this.updateFastTravel(dt);
       return;
     }
+    if (this.chapterChange) {
+      this.updateChapterChange(dt);
+      return;
+    }
     if (this.moment) {
       this.updateMoment(dt);
       return;
@@ -324,6 +353,7 @@ export class GameScene implements Scene {
       p.freeze = 0;
     }
     if (!p.dead && this.checkTransition()) return;
+    if (!p.dead && this.checkExit()) return;
     if (!p.dead) {
       this.history.push(p.snapshot());
       if (this.history.length > HISTORY) this.history.shift();
@@ -603,6 +633,7 @@ export class GameScene implements Scene {
       const k = this.fastTravel.t / TRAVEL_FADE;
       draw.rect(0, 0, WIDTH, HEIGHT, COLORS.e, Math.max(0, Math.min(1, k < 1 ? k : 2 - k)) * 0.9);
     }
+    if (this.chapterChange) this.renderChapterChange();
 
     if (this.paused) {
       draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.6);
@@ -671,8 +702,8 @@ export class GameScene implements Scene {
     if (conv.update(dt).blip) this.ctx.audio.blip(conv.line.speaker.voice);
     if (conv.done) {
       this.conversation = null;
-      if (conv.effects.includes("revealMap") && !this.revealed.has(WORLD)) {
-        this.revealed.add(WORLD);
+      if (conv.effects.includes("revealMap") && !this.revealed.has(this.world.id)) {
+        this.revealed.add(this.world.id);
         this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
       }
       this.ctx.audio.setDucked(false);
@@ -737,14 +768,14 @@ export class GameScene implements Scene {
   // ------------------------------------------------------------------ map & fast travel
   private shrines(): ShrineSpot[] {
     const out: ShrineSpot[] = [];
-    for (const r of this.world.rooms)
-      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
+    for (const r of this.allRooms())
+      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ chapter: r.chapter, room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
     return out;
   }
 
   private litCheckpoints(): Set<string> {
     const lit = new Set<string>();
-    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.add(`${r.name}:${i}`));
+    for (const r of this.allRooms()) r.level.checkpoints.forEach((c, i) => c.active && lit.add(`${r.name}:${i}`));
     return lit;
   }
 
@@ -762,9 +793,15 @@ export class GameScene implements Scene {
     const here = this.shrineHere();
     const targets = here ? travelTargets(this.shrines(), lit, here) : [];
     const keys = this.keyLabels();
+    const roomChapter = new Map(this.allRooms().map((r) => [r.name, r.chapter]));
+    const chapters = visitedChapters(this.visited, (name) => roomChapter.get(name) ?? null).map((id) => {
+      const def = chapterDef(id);
+      return { id, number: def?.number ?? 0, title: def?.title ?? id.toUpperCase(), rooms: this.worlds.get(id)!.rooms, revealed: this.revealed.has(id) };
+    });
     this.map.open({
+      chapters,
+      current: this.world.id,
       visited: this.visited,
-      revealed: this.revealed.has(WORLD),
       lit,
       player: { x: this.current.x + this.player.x + 4, y: this.current.y + this.player.y + 12 },
       currentRoom: this.current.name,
@@ -794,17 +831,85 @@ export class GameScene implements Scene {
     ft.t += dt;
     if (!ft.arrived && ft.t >= TRAVEL_FADE) {
       ft.arrived = true;
-      const room = this.world.rooms.find((r) => r.name === ft.target.room)!;
-      const point = { x: ft.target.x - room.x, y: ft.target.y - room.y };
-      this.setRoom(room);
-      this.respawnPoint = point;
-      this.lastCheckpoint.set(room.name, point);
-      this.restartRoom();
+      const world = this.worlds.get(ft.target.chapter)!;
+      const room = world.room(ft.target.room)!;
+      this.arriveAt(world, room, { x: ft.target.x - room.x, y: ft.target.y - room.y });
       this.ctx.audio.setDucked(false);
       this.ctx.sfx("checkpoint"); // the bell there answers
       this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
     }
     if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
+  }
+
+  /**
+   * Puts Iris at a point of a room, in its chapter (switching chapter and music if needed).
+   * `checkpoint`: the point is a shrine (fast travel) and becomes the room's checkpoint; an exit's
+   * arrival spawn is not, so the room keeps its last crystal / shrine.
+   */
+  private arriveAt(world: World, room: RoomDef, point: Point, checkpoint = true): void {
+    this.world = world;
+    this.setRoom(room);
+    this.respawnPoint = point;
+    if (checkpoint) this.lastCheckpoint.set(room.name, point);
+    this.restartRoom();
+    this.playChapterMusic(); // same track: keeps playing
+  }
+
+  // ------------------------------------------------------------------ chapters
+  /** Touching a chapter exit starts the change of chapter. */
+  private checkExit(): boolean {
+    const exit = this.level.exits.find((e) => overlaps(this.player.hitbox, e));
+    if (!exit) return false;
+    const world = this.worlds.get(exit.chapter);
+    const room = world?.room(exit.room);
+    if (!world || !room) return false; // that chapter isn't loaded (a ?world= run)
+    const firstVisit = !world.rooms.some((r) => this.visited.has(r.name));
+    this.chapterChange = { t: 0, exit, arrived: false, card: firstVisit ? CHAPTER_CARD_TIME : 0, cardT: 0 };
+    return true;
+  }
+
+  private updateChapterChange(dt: number): void {
+    const cc = this.chapterChange!;
+    const { input } = this.ctx;
+    if (!cc.arrived) {
+      cc.t = Math.min(TRAVEL_FADE, cc.t + dt);
+      if (cc.t < TRAVEL_FADE) return;
+      cc.arrived = true;
+      const world = this.worlds.get(cc.exit.chapter)!;
+      const room = world.room(cc.exit.room)!;
+      this.arriveAt(world, room, room.level.spawns[cc.exit.spawn] ?? room.level.spawn, false);
+      this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+      return;
+    }
+    if (cc.card > 0) {
+      cc.card -= dt;
+      cc.cardT += dt;
+      if (cc.cardT > CARD_SKIP_AFTER && (input.justPressed("jump") || input.justPressed("interact"))) cc.card = 0;
+      if (cc.card <= 0) this.player.cancelJumpBuffer();
+      return;
+    }
+    cc.t += dt;
+    if (cc.t >= TRAVEL_FADE * 2) this.chapterChange = null;
+  }
+
+  /** The fade, and on black the chapter card: "CHAPTER 1" small, "STARFALL RUINS" twice as big. */
+  private renderChapterChange(): void {
+    const { draw } = this.ctx;
+    const cc = this.chapterChange!;
+    const k = cc.t / TRAVEL_FADE;
+    const black = cc.card > 0 ? 1 : Math.max(0, Math.min(1, k < 1 ? k : 2 - k));
+    draw.rect(0, 0, WIDTH, HEIGHT, C.void, black);
+    if (cc.card <= 0 || cc.cardT <= 0) return;
+    const chapter = chapterDef(cc.exit.chapter);
+    if (!chapter) return;
+    const FADE = 0.4;
+    const ctx = draw.ctx;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, cc.cardT / FADE, cc.card / FADE);
+    draw.text(`CHAPTER ${chapter.number}`, WIDTH / 2, HEIGHT / 2 - 20, C.ash, { align: "center" });
+    ctx.scale(2, 2);
+    draw.text(chapter.title, WIDTH / 4, (HEIGHT / 2 - 4) / 2, C.echoLight, { align: "center" });
+    ctx.restore();
   }
 
   private renderEntities(camX: number, camY: number): void {

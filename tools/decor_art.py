@@ -210,6 +210,22 @@ def sign(w=16, h=16):
     return outline(img)
 
 
+def sign_arrow(w=16, h=16):
+    """A wayside sign whose board points right, with a pale chevron: "the way goes on"."""
+    img = Img(w, h)
+    for y in range(6, h):
+        img.set(5, y, "g")
+        img.set(6, y, "G")
+    for y in range(1, 7):
+        tip = 11 + min(y - 1, 6 - y)  # the board's right end is pointed
+        for x in range(1, tip + 1):
+            img.set(x, y, "G" if y in (1, 6) or x == 1 or x == tip else "g")
+    for i, y in enumerate((2, 3, 4, 5)):  # chevron >
+        img.set(6 + min(i, 3 - i), y, "W")
+        img.set(7 + min(i, 3 - i), y, "W")
+    return outline(img)
+
+
 def cart(w=32, h=20):
     img = Img(w, h)
     for y in range(4, 12):
@@ -398,6 +414,7 @@ def build_decor():
     d["lantern_post"] = lantern_post()
     d["hanging_lantern"] = hanging_lantern()
     d["sign"] = sign()
+    d["sign_arrow"] = sign_arrow()
     d["cart"] = cart()
     d["mill_wheel"] = mill_wheel()
     d["crate"] = crate()

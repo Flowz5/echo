@@ -1,12 +1,15 @@
 /**
  * Save slots, stored locally (SCRIPT.md §4.3). Every crystal or shrine Iris touches
  * writes the current slot. Anything unreadable or from another format version is
- * treated as an empty slot, never as a crash.
+ * treated as an empty slot, never as a crash. Version 1 saves (before chapters) load
+ * as chapter 0; the storage key keeps its "v1" name so they are found.
  */
 import type { Ability, CollectibleKind } from "./progress";
 
 export interface SaveData {
-  version: 1;
+  version: 2;
+  /** chapter (world) to resume in */
+  chapter: string;
   /** room to resume in, and Iris's feet position there */
   room: string;
   /** the room's title, for the slot screen */
@@ -56,8 +59,10 @@ export class SaveStore {
     const raw = this.get(slotKey(slot));
     if (!raw) return null;
     try {
-      const data = JSON.parse(raw) as SaveData;
-      return data && data.version === 1 && typeof data.room === "string" ? data : null;
+      const data = JSON.parse(raw) as Omit<SaveData, "version" | "chapter"> & { version: number; chapter?: unknown };
+      if (!data || typeof data.room !== "string") return null;
+      if (data.version === 1) return { ...data, version: 2, chapter: "chapter0" };
+      return data.version === 2 && typeof data.chapter === "string" ? (data as SaveData) : null;
     } catch {
       return null;
     }
