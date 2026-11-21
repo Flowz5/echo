@@ -3,10 +3,11 @@ import type { AudioEngine, SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
 import type { Renderer } from "../engine/renderer";
+import type { SaveData, SaveStore } from "../game/save";
 import type { Settings } from "../settings";
 import type { MenuBackground } from "./menu-background";
 
-export type ScreenName = "main" | "settings" | "controls" | "credits" | "game";
+export type ScreenName = "main" | "settings" | "controls" | "credits" | "slots" | "game";
 
 /** Everything a scene needs, shared by all scenes. */
 export interface Ctx {
@@ -17,6 +18,10 @@ export interface Ctx {
   scenes: SceneManager;
   bg: MenuBackground;
   audio: AudioEngine;
+  /** the 3 save slots */
+  saves: SaveStore;
+  /** the slot being played, and the save to start from (null = new game) */
+  session: { slot: number; data: SaveData | null };
   save(): void;
   sfx(name: SfxName): void;
 }

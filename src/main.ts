@@ -11,6 +11,7 @@ import { MainMenu } from "./scenes/main-menu";
 import { MenuBackground } from "./scenes/menu-background";
 import { SceneManager, type Ctx } from "./scenes/scene";
 import { SettingsMenu } from "./scenes/settings-menu";
+import { SaveStore } from "./game/save";
 import { loadSettings, saveSettings } from "./settings";
 
 async function boot(): Promise<void> {
@@ -31,6 +32,8 @@ async function boot(): Promise<void> {
     scenes,
     bg: new MenuBackground(draw),
     audio,
+    saves: new SaveStore(),
+    session: { slot: 1, data: null },
     save: () => saveSettings(settings),
     sfx: (name) => audio.sfx(name),
   };
