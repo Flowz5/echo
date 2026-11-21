@@ -19,8 +19,9 @@ LEVELS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets"
 TILE = 16
 SOLID = {1, 5, 6}       # ground, door (closed), crumble stone (intact)
 STANDABLE = {1, 2, 5, 6}  # + one-way platform
+SPIKES, CRUMBLE = 3, 6
 GROUNDED = {"spawn", "checkpoint", "shrine", "npc", "lingering"}
-HANGING = {"hanging_lantern", "vine", "vine_long", "cobweb", "stalactite"}
+HANGING = {"hanging_lantern", "vine", "vine_long", "cobweb", "stalactite", "rose_vine", "lantern_dead", "banner"}
 SPRITES = json.load(open(os.path.join(LEVELS, "..", "sprites.json")))
 DECOR = SPRITES["decor"]["rects"]
 
@@ -154,11 +155,21 @@ def main(world):
                 if o["type"] == "vent" and any(solid_at(r, x, y0) for x in range(x0, x0 + max(1, int(o["width"] // TILE)))):
                     problems.append(f"{r['name']}: vent at column {x0}: the top of its air column is inside a wall")
                 continue
+            if o["type"] == "deco" and prop(o, "sprite", "") in HANGING:
+                continue  # checked by check_decor (hangs from something)
             if o["type"] == "flower":
                 if solid_at(r, int(o["x"] // TILE), int(o["y"] // TILE)):
                     problems.append(f"{r['name']}: flower at ({int(o['x'] // TILE)},{int(o['y'] // TILE)}) is inside a wall")
                 continue
             tx, ty = int(o["x"] // TILE), int(o["y"] // TILE)  # tile under the feet
+            # chapter 0 predates this rule: report it there as a note, not a problem
+            spawn_issues = notes if world == "chapter0" else problems
+            if o["type"] == "spawn" and ty < r["h"]:
+                if tile(r, tx, ty) == CRUMBLE:
+                    spawn_issues.append(f"{r['name']}: spawn at ({tx},{ty - 1}) stands on crumble stone")
+                near = [x for x in range(tx - 2, tx + 3) if 0 <= x < r["w"] and 0 < ty and tile(r, x, ty - 1) == SPIKES]
+                if near:
+                    spawn_issues.append(f"{r['name']}: spawn at ({tx},{ty - 1}) is within 2 tiles of thorns")
             here = tile(r, tx, ty - 1) if 0 < ty <= r["h"] else 0
             below = tile(r, tx, ty) if ty < r["h"] else 0
             label = f"{r['name']}: {o['type']} at ({tx},{ty - 1})"

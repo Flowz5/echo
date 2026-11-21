@@ -1,4 +1,17 @@
 """Echo — the Room helper shared by the chapter build scripts (tools/build_chapter*.py)."""
+import json
+import os
+
+_SPRITES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites.json")
+
+
+def _decor_height(sprite):
+    try:
+        rects = json.load(open(_SPRITES))["decor"]["rects"]
+    except (OSError, KeyError, ValueError):
+        return None
+    r = rects.get(sprite) or rects.get(f"{sprite}_0")
+    return r["h"] if r else None
 
 
 class Room:
@@ -50,7 +63,11 @@ class Room:
 
     # ---- chapter 1 mechanics
     def crumble(self, x0, x1, y):
-        """A crumble-stone slab (breaks as one when stood on)."""
+        """A crumble-stone slab (breaks as one when stood on).
+        NO_CRUMBLE=1 in the environment leaves them out: build that way to check with the solver
+        that a room can't be climbed without its slabs (then rebuild normally)."""
+        if os.environ.get("NO_CRUMBLE"):
+            return
         self.fill(x0, y, x1, y, "=")
 
     def flower(self, x, y):
@@ -78,10 +95,17 @@ class Room:
             props["flip"] = True
         self.obj("deco", x, ground_row - 1, **props)
 
-    def hang(self, sprite, x, ceiling_row, layer="back"):
-        """A decoration hanging under the solid tile at `ceiling_row` (bottom at its length)."""
+    def hang(self, sprite, x, ceiling_row, layer="back", exact=False):
+        """A decoration hanging under the solid tile at `ceiling_row`. exact=True: its top touches the
+        tile's underside (pixel placement); otherwise tile-based (chapter 0's rooms keep that)."""
         lengths = {"hanging_lantern": 1, "vine": 1, "vine_long": 2, "cobweb": 1, "stalactite": 1}
-        self.obj("deco", x, ceiling_row + lengths.get(sprite, 1), sprite=sprite, layer=layer)
+        h = _decor_height(sprite) if exact else None
+        if h is None:  # unknown sprite: the old tile-based placement (check_world will complain)
+            self.obj("deco", x, ceiling_row + lengths.get(sprite, 1), sprite=sprite, layer=layer)
+            return
+        # exact: the sprite's top touches the ceiling tile's underside
+        self.objects.append({"type": "deco", "at": (x, ceiling_row), "y_px": (ceiling_row + 1) * 16 + h,
+                             "props": {"sprite": sprite, "layer": layer}})
 
     def export(self):
         return {"name": self.name, "at": self.at, "echoes": self.echoes, "props": self.props,

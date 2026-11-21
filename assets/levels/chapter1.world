@@ -10,9 +10,30 @@
    "height": 256
   },
   {
-   "fileName": "ruins_shrine.tmj",
+   "fileName": "pips_web.tmj",
    "x": 640,
-   "y": 0,
+   "y": -224,
+   "width": 352,
+   "height": 384
+  },
+  {
+   "fileName": "crumbling_walk.tmj",
+   "x": 832,
+   "y": -448,
+   "width": 480,
+   "height": 224
+  },
+  {
+   "fileName": "crumbling_stair.tmj",
+   "x": 992,
+   "y": -832,
+   "width": 480,
+   "height": 384
+  },
+  {
+   "fileName": "ruins_shrine.tmj",
+   "x": 1056,
+   "y": -1088,
    "width": 384,
    "height": 256
   }

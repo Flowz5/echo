@@ -1,0 +1,4 @@
+[
+ ["1-3 walk WITHOUT slabs", "crumbling_walk", [10, 12], {"kind": "tile", "rect": [22, 0, 26, 4]}, ["doubleJump", "wallJump", "dash"], false],
+ ["1-4 stair WITHOUT slabs", "crumbling_stair", [11, 22], {"kind": "tile", "rect": [13, 0, 16, 1]}, ["doubleJump", "wallJump", "dash"], false]
+]
