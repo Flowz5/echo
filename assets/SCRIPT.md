@@ -407,7 +407,7 @@ Every required exit and collectible was checked with a reachability solver using
 **Ending beat:** as Iris lifts the shard, a violet fog seeps from the cliffs above. A tall silhouette watches her from the ridge (the Stillwarden, first sighting), then disappears.
 
 ### Chapter 1: Starfall Ruins
-> Implementation status: placeholder rooms only (Gorge Gate, Ruins Shrine, tools/build_chapter1.py) and a placeholder *Broken Bridges* loop, so the chapter system can be played; the rooms below are the design to build.
+> Implementation status: **part 1 built** (tools/build_chapter1.py; design in docs/superpowers/specs/2026-11-21-ch1-level-design.md): Gorge Gate, Pip's Web (Pip placeholder), Crumbling Walk, Crumbling Stair, The Rose Garden, Rose Trellis, Updraft Square, Quill's Perch (Quill, chapter 1 map), The Lantern Market (Lumi's Moment 2, secret One More Bug with part 1's Lost Page), The Long Bridge (sealed alcove for the hanging switch), Ruins Shrine (both roads sealed until part 2). Solver: tools/solver/chapter1.cases.json + chapter1.gates.cases.json. Parts 2 (High Road / Low Road) and 3 (the gorge climb with Drift, Shard of Light) to come. The table below is the original outline.
 > Art (tools/ruins_art.py, gen_sprites.py): cut-stone ground with patchy moss (`tiles_ruins`), the ruined town across the gorge as the far layer (`backgrounds/ruins.png`), decor `ruin_house`, `ruin_house_small`, `ruin_arch`, `pillar_tall`, `column_fallen`, `bell_fallen` (verdigris, never amber), `rubble_s/m/l`, `rose_bush`, `rose_vine` (hangs), `lantern_dead` (hangs), `lantern_post_bent`, `balustrade`, `banner` (hangs), `statue`, `starbloom`, `moss0-2`; procedural dressing switches to moss, starblooms, roses and rubble (chapters.ts `look: "ruins"`).
 
 **Music:** *Broken Bridges* · **Teaches:** dash, crumble stone, dash flowers, wind vents · **Shard:** Shard of Light (Pip's lantern, unlocks dark rooms)
@@ -625,6 +625,18 @@ At the end, Corin falls to his knees beside the Bell. He doesn't fight anymore.
 **QUILL** (back): …Of course it will. Probably. Maps don't care either way. That's what I like about them.
 **QUILL** (map): Here. Everything I've drawn so far. If you find any loose pages lying about, bring them. Paper is precious.
 **SYSTEM:** MAP UPDATED.
+
+**Chapter 1, Quill's Perch (1-8)** ✅
+**QUILL:** You climbed up here? Without a rope? I used four ropes. And a ladder. And a small prayer.
+**QUILL:** The Tollers built their whole town on bridges. Half of them are still here. The other half are… down.
+**QUILL:** Past the shrine the road splits. One goes over the roofs, one goes under the bridges.
+> HOW DO YOU MAP WHAT FELL?
+> SHOW ME THE MAP
+
+**QUILL** (fell): Dotted lines. A dotted line means "it was here, once". My maps are getting very dotted.
+**QUILL** (both): There. Both roads, and where they meet again. Mind the gaps. I drew them bigger than they are. On purpose.
+**SYSTEM:** MAP UPDATED.
+**QUILL** (repeat): If the wind picks you up, don't fight it. Dash out at the top. That's what the birds do. I assume.
 
 **Chapter 3, the Archive**
 **QUILL:** These journals… they're Corin Vael's. The Head Toller.

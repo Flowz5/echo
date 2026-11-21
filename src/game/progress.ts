@@ -1,9 +1,10 @@
 /** What Iris has unlocked and collected during a run. */
 
-export type Ability = "doubleJump" | "wallJump" | "dash" | "rewind";
+/** light: the Shard of Light (chapter 1) — Pip's lantern, no effect yet */
+export type Ability = "doubleJump" | "wallJump" | "dash" | "rewind" | "light";
 export type CollectibleKind = "shard" | "note" | "page" | "moment";
 
-export const ABILITIES: Ability[] = ["doubleJump", "wallJump", "dash", "rewind"];
+export const ABILITIES: Ability[] = ["doubleJump", "wallJump", "dash", "rewind", "light"];
 
 export class Progress {
   readonly abilities = new Set<Ability>();

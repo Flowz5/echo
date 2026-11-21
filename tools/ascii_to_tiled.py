@@ -176,6 +176,8 @@ def room_map(room):
             "rotation": 0,
             "visible": True,
         }
+        if "y_px" in o:  # an exact pixel height (hanging decor)
+            obj["y"] = o["y_px"]
         if o.get("center"):  # a point at the tile's centre (flowers), not its bottom
             obj["y"] = ty * TILE + TILE / 2
         if "size" in o:  # a rectangle: `at` is its top-left tile, `size` in tiles

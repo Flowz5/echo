@@ -57,10 +57,35 @@ export function quillFirst(): Line[] {
 
 export const quillRepeat = (): Line[] => say(QUILL, "THE MILL'S ON THE MAP NOW. THE MILL IS ALWAYS ON THE MAP.");
 
+/** Chapter 1, Quill's Perch: he's mapping the ruins from the top of a broken spire. */
+export function quillRuinsFirst(): Line[] {
+  const map = [...say(QUILL, "THERE. BOTH ROADS, AND WHERE THEY MEET AGAIN. MIND THE GAPS. I DREW THEM BIGGER THAN THEY ARE. ON PURPOSE."), ...say(SYSTEM, "MAP UPDATED.")];
+  return [
+    ...say(QUILL, "YOU CLIMBED UP HERE? WITHOUT A ROPE? I USED FOUR ROPES. AND A LADDER. AND A SMALL PRAYER."),
+    ...say(QUILL, "THE TOLLERS BUILT THEIR WHOLE TOWN ON BRIDGES. HALF OF THEM ARE STILL HERE. THE OTHER HALF ARE... DOWN."),
+    {
+      speaker: QUILL,
+      text: "PAST THE SHRINE THE ROAD SPLITS. ONE GOES OVER THE ROOFS, ONE GOES UNDER THE BRIDGES.",
+      choices: [
+        {
+          label: "HOW DO YOU MAP WHAT FELL?",
+          effect: "revealMap",
+          reply: [...say(QUILL, "DOTTED LINES. A DOTTED LINE MEANS 'IT WAS HERE, ONCE'. MY MAPS ARE GETTING VERY DOTTED."), ...map],
+        },
+        { label: "SHOW ME THE MAP", effect: "revealMap", reply: map },
+      ],
+    },
+  ];
+}
+
+export const quillRuinsRepeat = (): Line[] => say(QUILL, "IF THE WIND PICKS YOU UP, DON'T FIGHT IT. DASH OUT AT THE TOP. THAT'S WHAT THE BIRDS DO. I ASSUME.");
+
 export const lingeringLine = (text: string): Line[] => say(LINGERING, text);
 
 /** First and repeat conversations by NPC name (Tiled "name" property). */
 export const NPC_DIALOGUES: Record<string, { first: () => Line[]; repeat: () => Line[] }> = {
   TAMSIN: { first: tamsinFirst, repeat: tamsinRepeat },
   QUILL: { first: quillFirst, repeat: quillRepeat },
+  /** chosen with the npc's "script" property */
+  quill_ch1: { first: quillRuinsFirst, repeat: quillRuinsRepeat },
 };

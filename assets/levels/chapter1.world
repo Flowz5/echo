@@ -10,9 +10,79 @@
    "height": 256
   },
   {
-   "fileName": "ruins_shrine.tmj",
+   "fileName": "pips_web.tmj",
    "x": 640,
-   "y": 0,
+   "y": -224,
+   "width": 352,
+   "height": 384
+  },
+  {
+   "fileName": "crumbling_walk.tmj",
+   "x": 832,
+   "y": -448,
+   "width": 480,
+   "height": 224
+  },
+  {
+   "fileName": "crumbling_stair.tmj",
+   "x": 992,
+   "y": -832,
+   "width": 480,
+   "height": 384
+  },
+  {
+   "fileName": "rose_garden.tmj",
+   "x": 880,
+   "y": -1056,
+   "width": 640,
+   "height": 224
+  },
+  {
+   "fileName": "rose_trellis.tmj",
+   "x": 1520,
+   "y": -1184,
+   "width": 448,
+   "height": 384
+  },
+  {
+   "fileName": "updraft_square.tmj",
+   "x": 1568,
+   "y": -1440,
+   "width": 640,
+   "height": 256
+  },
+  {
+   "fileName": "quills_perch.tmj",
+   "x": 1552,
+   "y": -1952,
+   "width": 576,
+   "height": 512
+  },
+  {
+   "fileName": "lantern_market.tmj",
+   "x": 1328,
+   "y": -2208,
+   "width": 640,
+   "height": 256
+  },
+  {
+   "fileName": "one_more_bug.tmj",
+   "x": 1008,
+   "y": -2160,
+   "width": 320,
+   "height": 208
+  },
+  {
+   "fileName": "long_bridge.tmj",
+   "x": 1968,
+   "y": -2208,
+   "width": 640,
+   "height": 256
+  },
+  {
+   "fileName": "ruins_shrine.tmj",
+   "x": 2608,
+   "y": -2208,
    "width": 384,
    "height": 256
   }

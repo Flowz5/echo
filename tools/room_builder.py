@@ -1,4 +1,17 @@
 """Echo — the Room helper shared by the chapter build scripts (tools/build_chapter*.py)."""
+import json
+import os
+
+_SPRITES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites.json")
+
+
+def _decor_height(sprite):
+    try:
+        rects = json.load(open(_SPRITES))["decor"]["rects"]
+    except (OSError, KeyError, ValueError):
+        return None
+    r = rects.get(sprite) or rects.get(f"{sprite}_0")
+    return r["h"] if r else None
 
 
 class Room:
@@ -40,8 +53,12 @@ class Room:
     def obj(self, kind, x, y, **props):
         self.objects.append({"type": kind, "at": (x, y), "props": props} if props else {"type": kind, "at": (x, y)})
 
-    def npc(self, x, y, name):
-        self.obj("npc", x, y, name=name)
+    def npc(self, x, y, name, script=None):
+        """script: which dialogue to use (default: by name), e.g. "quill_ch1"."""
+        if script:
+            self.obj("npc", x, y, name=name, script=script)
+        else:
+            self.obj("npc", x, y, name=name)
 
     def exit(self, x, y, chapter, room, spawn=0):
         """A chapter exit: the full-height strip of column x leads to `room` in `chapter`
@@ -50,15 +67,24 @@ class Room:
 
     # ---- chapter 1 mechanics
     def crumble(self, x0, x1, y):
-        """A crumble-stone slab (breaks as one when stood on)."""
+        """A crumble-stone slab (breaks as one when stood on).
+        NO_CRUMBLE=1 in the environment leaves them out: build that way to check with the solver
+        that a room can't be climbed without its slabs (then rebuild normally)."""
+        if os.environ.get("NO_CRUMBLE"):
+            return
         self.fill(x0, y, x1, y, "=")
 
     def flower(self, x, y):
-        """A dash flower centred in tile (x, y)."""
+        """A dash flower centred in tile (x, y). NO_FLOWER=1 leaves them out (gate checks)."""
+        if os.environ.get("NO_FLOWER"):
+            return
         self.objects.append({"type": "flower", "at": (x, y), "center": True})
 
     def vent(self, x, y_top, y_bottom, w=1):
-        """A wind vent: the air column covers rows y_top..y_bottom, w tiles wide from column x; grate at the bottom."""
+        """A wind vent: the air column covers rows y_top..y_bottom, w tiles wide from column x, rising
+        from a fissure in the rock under it. NO_VENT=1 leaves them out (gate checks)."""
+        if os.environ.get("NO_VENT"):
+            return
         self.objects.append({"type": "vent", "at": (x, y_top), "size": (w, y_bottom - y_top + 1)})
 
     def drift(self, x0, y0, x1, y1):
@@ -78,10 +104,17 @@ class Room:
             props["flip"] = True
         self.obj("deco", x, ground_row - 1, **props)
 
-    def hang(self, sprite, x, ceiling_row, layer="back"):
-        """A decoration hanging under the solid tile at `ceiling_row` (bottom at its length)."""
+    def hang(self, sprite, x, ceiling_row, layer="back", exact=False):
+        """A decoration hanging under the solid tile at `ceiling_row`. exact=True: its top touches the
+        tile's underside (pixel placement); otherwise tile-based (chapter 0's rooms keep that)."""
         lengths = {"hanging_lantern": 1, "vine": 1, "vine_long": 2, "cobweb": 1, "stalactite": 1}
-        self.obj("deco", x, ceiling_row + lengths.get(sprite, 1), sprite=sprite, layer=layer)
+        h = _decor_height(sprite) if exact else None
+        if h is None:  # unknown sprite: the old tile-based placement (check_world will complain)
+            self.obj("deco", x, ceiling_row + lengths.get(sprite, 1), sprite=sprite, layer=layer)
+            return
+        # exact: the sprite's top touches the ceiling tile's underside
+        self.objects.append({"type": "deco", "at": (x, ceiling_row), "y_px": (ceiling_row + 1) * 16 + h,
+                             "props": {"sprite": sprite, "layer": layer}})
 
     def export(self):
         return {"name": self.name, "at": self.at, "echoes": self.echoes, "props": self.props,
