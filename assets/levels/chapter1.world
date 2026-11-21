@@ -31,9 +31,37 @@
    "height": 384
   },
   {
+   "fileName": "rose_garden.tmj",
+   "x": 880,
+   "y": -1056,
+   "width": 640,
+   "height": 224
+  },
+  {
+   "fileName": "rose_trellis.tmj",
+   "x": 1520,
+   "y": -1184,
+   "width": 448,
+   "height": 384
+  },
+  {
+   "fileName": "updraft_square.tmj",
+   "x": 1568,
+   "y": -1440,
+   "width": 480,
+   "height": 256
+  },
+  {
+   "fileName": "quills_perch.tmj",
+   "x": 1504,
+   "y": -1952,
+   "width": 576,
+   "height": 512
+  },
+  {
    "fileName": "ruins_shrine.tmj",
-   "x": 1056,
-   "y": -1088,
+   "x": 1408,
+   "y": -2208,
    "width": 384,
    "height": 256
   }

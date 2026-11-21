@@ -4,6 +4,12 @@
  *   npm run solve                                  # tools/solver/chapter0.cases.json
  *   SOLVE_CASES=path/to/cases.json npm run solve   # another list
  *   SOLVE_WORLD=mechanics SOLVE_CASES=tools/solver/mechanics.cases.json SOLVE_TIME=180 npm run solve
+ *   SOLVE_WORLD=chapter1 SOLVE_CASES=tools/solver/chapter1.cases.json SOLVE_TIME=120 npm run solve
+ * Gate checks (each room can't be done without its mechanic): build the chapter without them,
+ * run the gate cases (all "false"), then rebuild normally:
+ *   NO_CRUMBLE=1 NO_FLOWER=1 NO_VENT=1 python3 tools/build_chapter1.py
+ *   SOLVE_WORLD=chapter1 SOLVE_CASES=tools/solver/chapter1.gates.cases.json npm run solve
+ *   python3 tools/build_chapter1.py
  *
  * A case: [label, room, [tileX, feetRow], goal, abilities, expectedReached, avoid?]
  *   goal: {"kind":"tile","rect":[x0,y0,x1,y1]}  (hitbox inside those tiles)

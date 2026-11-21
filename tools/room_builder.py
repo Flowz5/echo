@@ -53,8 +53,12 @@ class Room:
     def obj(self, kind, x, y, **props):
         self.objects.append({"type": kind, "at": (x, y), "props": props} if props else {"type": kind, "at": (x, y)})
 
-    def npc(self, x, y, name):
-        self.obj("npc", x, y, name=name)
+    def npc(self, x, y, name, script=None):
+        """script: which dialogue to use (default: by name), e.g. "quill_ch1"."""
+        if script:
+            self.obj("npc", x, y, name=name, script=script)
+        else:
+            self.obj("npc", x, y, name=name)
 
     def exit(self, x, y, chapter, room, spawn=0):
         """A chapter exit: the full-height strip of column x leads to `room` in `chapter`
@@ -71,11 +75,16 @@ class Room:
         self.fill(x0, y, x1, y, "=")
 
     def flower(self, x, y):
-        """A dash flower centred in tile (x, y)."""
+        """A dash flower centred in tile (x, y). NO_FLOWER=1 leaves them out (gate checks)."""
+        if os.environ.get("NO_FLOWER"):
+            return
         self.objects.append({"type": "flower", "at": (x, y), "center": True})
 
     def vent(self, x, y_top, y_bottom, w=1):
-        """A wind vent: the air column covers rows y_top..y_bottom, w tiles wide from column x; grate at the bottom."""
+        """A wind vent: the air column covers rows y_top..y_bottom, w tiles wide from column x, rising
+        from a fissure in the rock under it. NO_VENT=1 leaves them out (gate checks)."""
+        if os.environ.get("NO_VENT"):
+            return
         self.objects.append({"type": "vent", "at": (x, y_top), "size": (w, y_bottom - y_top + 1)})
 
     def drift(self, x0, y0, x1, y1):

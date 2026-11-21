@@ -112,19 +112,117 @@ def crumbling_stair():
     r.hang("rose_vine", 25, 0, exact=True)
     rooms.append(r)
 
+def rose_garden():
+    """1-5 The Rose Garden: a thorn gap too wide for jump + double jump + dash (13 tiles); a dash
+    flower in the middle gives the dash back: dash, flower, dash."""
+    r = Room("rose_garden", "The Rose Garden", 40, 14, (55, -66))
+    r.ground(0, 39, 13)
+    r.clear(20, 13, 23, 13)                # the hole from Crumbling Stair's opening
+    r.put(17, 12, "S")
+    r.fill(0, 0, 0, 12)                    # left wall
+    r.spikes(25, 37, 12)
+    r.flower(31, 10)
+    r.fill(39, 0, 39, 7)                   # right wall above the way on (rows 8..12 open)
+    r.deco("rose_bush", 5, 13)
+    r.deco("rose_bush", 12, 13)
+    r.deco("ruin_house", 8, 13, "back")
+    r.deco("statue", 3, 13, "back")
+    rooms.append(r)
+
+
+def rose_trellis():
+    """1-6 Rose Trellis: a tall shaft over thorns climbed on a straight column of dash flowers, three
+    tiles apart: dash straight up, the flower gives the dash back, dash again. Two stepping stones
+    lead to the foot of the column. The walls and the ceiling gap are 12+ tiles apart, so no
+    climbing round the flowers."""
+    r = Room("rose_trellis", "Rose Trellis", 28, 24, (95, -74))
+    r.fill(0, 21, 4, 23)                   # entrance platform (level with the garden's floor)
+    r.put(2, 20, "S")
+    r.ground(5, 26, 23)
+    r.spikes(5, 26, 22)
+    r.fill(7, 21, 7, 22)                   # stepping stone
+    r.fill(12, 21, 14, 22)                 # the foot of the column (stand row 20)
+    r.fill(0, 0, 0, 15)                    # left wall above the way in
+    r.fill(27, 0, 27, 23)                  # right wall
+    r.fill(1, 0, 11, 0)                    # ceiling, opening at cols 12..15
+    r.fill(16, 0, 26, 0)
+    for y in (17, 14, 11, 8, 5, 2):
+        r.flower(13, y)
+    r.hang("rose_vine", 4, 0, exact=True)
+    r.hang("rose_vine", 21, 0, exact=True)
+    r.hang("rose_vine", 9, 0, exact=True)
+    r.deco("rose_bush", 2, 21)
+    rooms.append(r)
+
+
+def updraft_square():
+    """1-7 Updraft Square: a wind fissure over thorns lifts Iris past a high ledge; dash out of the
+    column to the left onto it (it floats 10 tiles above the floor). Both walls are 12+ tiles from
+    the ledge, so climbing a wall doesn't get you there."""
+    r = Room("updraft_square", "Updraft Square", 30, 16, (98, -90))
+    r.ground(0, 29, 15)
+    r.clear(11, 15, 14, 15)                # the hole from Rose Trellis's opening
+    r.put(8, 14, "S")
+    r.fill(0, 0, 0, 14)                    # left wall
+    r.fill(29, 0, 29, 14)                  # right wall
+    r.spikes(17, 28, 14)
+    r.vent(19, 3, 13, w=2)                 # the air column over the fissure
+    r.fill(19, 14, 20, 14)                 # rock with the fissure
+    r.fill(12, 5, 16, 6)                   # the ledge (stand row 4), exit up above it
+    r.fill(1, 0, 11, 0)                    # ceiling, opening at cols 12..16
+    r.fill(17, 0, 28, 0)
+    r.deco("ruin_arch", 5, 15, "back")
+    r.deco("lantern_post_bent", 3, 15)
+    r.deco("rubble_s", 16, 15)
+    r.hang("banner", 24, 0, exact=True)
+    rooms.append(r)
+
+
+def quills_perch():
+    """1-8 Quill's Perch: two screens up a broken spire — a crumble step, a wind fissure, a crystal
+    ledge, another slab and fissure — to Quill's perch under the roof, and out through a gap in the
+    roof on the left. The walls are 13 tiles from the safe platform, so no climbing round."""
+    r = Room("quills_perch", "Quill's Perch", 36, 32, (94, -122))
+    r.ground(0, 35, 31)
+    r.clear(16, 31, 19, 31)                # the hole from Updraft Square's exit
+    r.put(15, 30, "S")
+    r.spikes(1, 12, 30)
+    r.spikes(23, 34, 30)
+    r.fill(0, 0, 0, 30)                    # left wall
+    r.fill(35, 0, 35, 30)                  # right wall
+    r.fill(6, 0, 34, 0)                    # the spire's roof; the way out is the gap at cols 1..5
+    r.crumble(8, 10, 27)                   # stand row 26
+    r.vent(4, 14, 25, w=2)
+    r.fill(4, 26, 5, 26)                   # rock with the first fissure
+    r.fill(9, 12, 14, 13)                  # crystal ledge (stand row 11)
+    r.put(11, 11, "C")
+    r.crumble(18, 20, 9)                   # stand row 8
+    r.vent(24, 2, 10, w=2)
+    r.fill(24, 11, 25, 11)                 # rock with the second fissure
+    r.fill(6, 3, 20, 4)                    # the perch, running left to under the gap (stand row 2)
+    r.npc(17, 2, "QUILL", script="quill_ch1")
+    r.hang("lantern_dead", 28, 0, exact=True)
+    r.hang("banner", 12, 0, exact=True)
+    r.hang("rose_vine", 32, 0, exact=True)
+    r.deco("statue", 12, 3, "back")
+    rooms.append(r)
+
+
 def ruins_shrine():
-    """1-11 Ruins Shrine (for now right above Crumbling Stair; moved to the end of part 1 later)."""
-    r = Room("ruins_shrine", "Ruins Shrine", 24, 16, (66, -68))
+    """1-11 Ruins Shrine (for now right after Quill's Perch; moved to the end of part 1 later)."""
+    r = Room("ruins_shrine", "Ruins Shrine", 24, 16, (88, -138))
     r.ground(0, 23, 15)
-    r.clear(9, 15, 12, 15)                 # the hole from Crumbling Stair's opening
+    r.clear(7, 15, 11, 15)                 # the hole from the gap in the spire's roof
     r.fill(23, 0, 23, 14)
     r.fill(0, 0, 0, 14)
     r.put(16, 14, "H")
-    r.deco("ruin_arch", 4, 15, "back")
+    r.deco("ruin_arch", 3, 15, "back")
     r.deco("statue", 20, 15, "back")
     rooms.append(r)
 
-for build in (gorge_gate, pips_web, crumbling_walk, crumbling_stair, ruins_shrine):
+
+for build in (gorge_gate, pips_web, crumbling_walk, crumbling_stair, rose_garden, rose_trellis,
+              updraft_square, quills_perch, ruins_shrine):
     build()
 
 write_world("chapter1", [room.export() for room in rooms])
