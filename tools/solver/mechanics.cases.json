@@ -1,0 +1,6 @@
+[
+ ["crumble: run across the slabs", "mech_crumble", [2, 12], {"kind": "exit", "side": "right"}, ["doubleJump", "wallJump", "dash"], true],
+ ["flower: across the rose gap", "mech_flower", [2, 12], {"kind": "tile", "rect": [20, 10, 31, 12]}, ["doubleJump", "wallJump", "dash"], true],
+ ["flower: not without the dash", "mech_flower", [2, 12], {"kind": "tile", "rect": [20, 10, 31, 12]}, ["doubleJump", "wallJump"], false],
+ ["drift: over the pit", "mech_drift", [2, 12], {"kind": "tile", "rect": [20, 0, 31, 9]}, ["doubleJump", "wallJump", "dash"], true]
+]

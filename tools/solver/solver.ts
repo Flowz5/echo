@@ -4,6 +4,9 @@
  * Best-first search over 4-frame input macros (left/right/none × jump held or not, plus the
  * 8 dash directions) using the game's real Player physics and room colliders, so a "reached"
  * answer is a real input sequence. Crystals refill the dash and double jump like in the game.
+ * Chapter 1 mechanics are simulated too: vents and Drift through the Player, crumble stones
+ * and dash flowers through the level's Mechanics state (part of each search node).
+ * Rewind and echoes are not simulated.
  *
  * "Not reached" means the search found nothing within its budget (nodes / seconds): strong
  * evidence, not a proof. Long routes are best checked as segments.
@@ -17,6 +20,15 @@ import { Player } from "../../src/game/player";
 import type { Ability } from "../../src/game/progress";
 import { World } from "../../src/game/world";
 import { DT, FakeInput } from "../../src/game/test-helpers";
+import type { MechSnapshot } from "../../src/game/mechanics";
+import { touchStrips } from "../../src/game/room";
+
+/** One frame of the world around Iris, as Room.update and the game scene do it. */
+function stepWorld(level: Level, p: Player): void {
+  if (p.dead) return;
+  level.mech.update(DT, touchStrips(p.hitbox, p.wallSide), [p.hitbox]);
+  if (level.mech.useFlower(p.hitbox, p.canDash) >= 0) p.refillDash();
+}
 
 export type Goal =
   | { kind: "exit"; side: "left" | "right" | "top"; rows?: [number, number]; cols?: [number, number] }
@@ -74,6 +86,8 @@ export function solve(roomName: string, from: number | [number, number], goal: G
   const def = room(roomName);
   const level = def.level;
   const can = (a: Ability) => abilities.includes(a);
+  level.mech.reset();
+  const hasMech = level.mech.runs.length > 0 || level.flowers.length > 0;
   const player = new Player(level, new Effects(), () => {}, can);
   const feet = typeof from === "number" ? level.spawns[from] : { x: from[0] * 16 + 8, y: from[1] * 16 };
   player.respawnAt(feet);
@@ -86,8 +100,8 @@ export function solve(roomName: string, from: number | [number, number], goal: G
   const input = new FakeInput();
   // settle
   for (let i = 0; i < 5; i++) { player.update(DT, input.asInput); }
-  type Node = { p: Player; held: boolean; parent: number; act: number; depth: number };
-  const nodes: Node[] = [{ p: player, held: false, parent: -1, act: -1, depth: 0 }];
+  type Node = { p: Player; held: boolean; parent: number; act: number; depth: number; mech: MechSnapshot };
+  const nodes: Node[] = [{ p: player, held: false, parent: -1, act: -1, depth: 0, mech: level.mech.snapshot() }];
   // goal point for the heuristic
   let gx = 0, gy = 0;
   if (goal.kind === "exit") {
@@ -128,6 +142,7 @@ export function solve(roomName: string, from: number | [number, number], goal: G
       const act = ACTS[ai];
       if (act.dash && (!can("dash") || !n.p.canDash)) continue;
       const p = clone(n.p);
+      level.mech.restore(n.mech);
       const inp = new FakeInput();
       let held = n.held;
       if (held) inp.press("jump"), inp.endFrame();
@@ -141,6 +156,7 @@ export function solve(roomName: string, from: number | [number, number], goal: G
         if (act.dash && f === 0) inp.press("dash"); else inp.release("dash");
         p.update(DT, inp.asInput);
         inp.endFrame();
+        stepWorld(level, p);
         if (p.dead || p.y > level.height) { dead = true; break; }
         const hb = p.hitbox;
         if (avoidRects.some((c) => c.x < hb.x + hb.w && c.x + c.w > hb.x && c.y < hb.y + hb.h && c.y + c.h > hb.y)) { dead = true; break; }
@@ -156,10 +172,10 @@ export function solve(roomName: string, from: number | [number, number], goal: G
         return { reached: true, nodes: nodes.length, path: names.join(" "), end: { x: +(p.x / 16).toFixed(1), y: +(p.y / 16).toFixed(1) } };
       }
       if (dead) continue;
-      const k = key(p, held);
+      const k = key(p, held) + (hasMech ? level.mech.key() : "");
       if (seen.has(k)) continue;
       seen.add(k);
-      nodes.push({ p, held, parent: cur, act: ai, depth: n.depth + 1 });
+      nodes.push({ p, held, parent: cur, act: ai, depth: n.depth + 1, mech: level.mech.snapshot() });
       push(nodes.length - 1);
     }
   }
@@ -169,6 +185,7 @@ export function solve(roomName: string, from: number | [number, number], goal: G
 /** Re-simulates a path from scratch with the exact macro procedure; returns the end state. */
 export function simulate(roomName: string, from: [number, number], abilities: Ability[], path: string) {
   const level = room(roomName).level;
+  level.mech.reset();
   const can = (a: Ability) => abilities.includes(a);
   const p = new Player(level, new Effects(), () => {}, can);
   p.respawnAt({ x: from[0] * 16 + 8, y: from[1] * 16 });
@@ -189,6 +206,7 @@ export function simulate(roomName: string, from: [number, number], abilities: Ab
       if (act.dash && f === 0) inp.press("dash"); else inp.release("dash");
       p.update(DT, inp.asInput);
       inp.endFrame();
+      stepWorld(level, p);
     }
     held = act.jump;
     trace.push(`${t}:${(p.x / 16).toFixed(1)},${(p.y / 16).toFixed(1)}`);
@@ -199,6 +217,7 @@ export function simulate(roomName: string, from: [number, number], abilities: Ab
 /** Like simulate(), but returns the cells visited (letter per macro) and the end state, for replays. */
 export function simulateTrace(roomName: string, from: [number, number], abilities: Ability[], path: string) {
   const level = room(roomName).level;
+  level.mech.reset();
   const can = (a: Ability) => abilities.includes(a);
   const p = new Player(level, new Effects(), () => {}, can);
   p.respawnAt({ x: from[0] * 16 + 8, y: from[1] * 16 });
@@ -220,6 +239,7 @@ export function simulateTrace(roomName: string, from: [number, number], abilitie
       if (act.dash && f === 0) inp.press("dash"); else inp.release("dash");
       p.update(DT, inp.asInput);
       inp.endFrame();
+      stepWorld(level, p);
     }
     held = act.jump;
     marks.set(`${Math.floor((p.x + 4) / 16)},${Math.floor((p.y + 6) / 16)}`, String.fromCharCode(97 + (step % 26)));
