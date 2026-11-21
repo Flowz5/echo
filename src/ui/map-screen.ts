@@ -12,10 +12,10 @@ const PAN_SPEED = 200; // map px per second
 
 /** Quill's map: ink on paper (SCRIPT.md §4.9), in the game palette. */
 const PAPER = COLORS.W;
-const PAPER_DARK = COLORS.Y;
-const INK = COLORS.a;
+const INK = COLORS.a; // sepia: almost everything is drawn with it
 const INK_DARK = COLORS.K;
 const INK_FAINT = COLORS.g;
+const WASH = 0.22; // rock: a light wash of the sepia ink
 
 export interface MapOpenOptions {
   visited: Set<string>;
@@ -98,8 +98,8 @@ export class MapScreen {
       const h = r.level.rows * SCALE;
       if (state === "revealed") {
         // dotted outline: Quill knows the room is there
-        for (let x = 0; x < w; x += 3) px(o.x + x, o.y, INK_FAINT), px(o.x + x, o.y + h - 1, INK_FAINT);
-        for (let y = 0; y < h; y += 3) px(o.x, o.y + y, INK_FAINT), px(o.x + w - 1, o.y + y, INK_FAINT);
+        for (let x = 0; x < w; x += 3) px(o.x + x, o.y, INK), px(o.x + x, o.y + h - 1, INK);
+        for (let y = 0; y < h; y += 3) px(o.x, o.y + y, INK), px(o.x + w - 1, o.y + y, INK);
         continue;
       }
       const solid = (tx: number, ty: number) => {
@@ -113,29 +113,32 @@ export class MapScreen {
           const x0 = o.x + tx * SCALE;
           const y0 = o.y + ty * SCALE;
           if (t === "#" || t === "D") {
-            // hatched rock, its outline inked
-            for (let y = 0; y < SCALE; y++)
-              for (let x = 0; x < SCALE; x++) if ((x0 + x + y0 + y) % 3 === 0) px(x0 + x, y0 + y, INK);
-            ctx.fillStyle = INK_DARK;
+            // rock: a light sepia wash, its outline inked
+            ctx.globalAlpha = WASH;
+            ctx.fillStyle = INK;
+            ctx.fillRect(x0, y0, SCALE, SCALE);
+            ctx.globalAlpha = 1;
             if (!solid(tx, ty - 1)) ctx.fillRect(x0, y0, SCALE, 1);
             if (!solid(tx, ty + 1)) ctx.fillRect(x0, y0 + SCALE - 1, SCALE, 1);
             if (!solid(tx - 1, ty)) ctx.fillRect(x0, y0, 1, SCALE);
             if (!solid(tx + 1, ty)) ctx.fillRect(x0 + SCALE - 1, y0, 1, SCALE);
           } else if (t === "-") {
-            if (tx % 2 === 0) ctx.fillStyle = INK, ctx.fillRect(x0, y0, SCALE, 1); // dashed planks
+            ctx.fillStyle = INK; // planks: a thin line
+            ctx.fillRect(x0, y0, SCALE, 1);
           } else if (t === "^") {
-            px(x0 + 1, y0 + SCALE - 2, COLORS.R); // little red thorns
-            px(x0, y0 + SCALE - 1, COLORS.R);
-            px(x0 + 2, y0 + SCALE - 1, COLORS.R);
+            px(x0 + 1, y0 + SCALE - 2, INK); // thorns: little ink ticks
+            px(x0 + 1, y0 + SCALE - 1, INK);
           } else if (t === "b") {
-            ctx.fillStyle = COLORS.A;
+            ctx.fillStyle = INK;
             ctx.fillRect(x0, y0 + SCALE - 1, SCALE, 1);
           }
         }
       }
-      ctx.strokeStyle = INK_FAINT; // the room's frame, light
-      ctx.lineWidth = 1;
-      ctx.strokeRect(o.x + 0.5, o.y + 0.5, w - 1, h - 1);
+      // the room's frame: a very light dotted line
+      ctx.globalAlpha = 0.35;
+      for (let x = 0; x < w; x += 4) px(o.x + x, o.y, INK), px(o.x + x, o.y + h - 1, INK);
+      for (let y = 0; y < h; y += 4) px(o.x, o.y + y, INK), px(o.x + w - 1, o.y + y, INK);
+      ctx.globalAlpha = 1;
     }
     return canvas;
   }
@@ -177,12 +180,14 @@ export class MapScreen {
     const oy = Math.round(VIEW.y - this.camY);
     ctx.drawImage(this.cache, ox, oy);
 
-    // the room Iris is in: underlined in cyan
+    // the room Iris is in: its frame inked solid
     const here = this.rooms.find((r) => r.name === opts.currentRoom);
     if (here) {
       const o = this.toMap(here.x, here.y);
-      ctx.strokeStyle = C.echo;
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = INK;
       ctx.strokeRect(ox + o.x + 0.5, oy + o.y + 0.5, here.level.cols * SCALE - 1, here.level.rows * SCALE - 1);
+      ctx.globalAlpha = 1;
     }
 
     for (const r of this.rooms) {
@@ -207,10 +212,11 @@ export class MapScreen {
         const y = Math.round(oy + p.y);
         if (c.kind === "shrine") this.bell(x, y);
         else {
-          const color = opts.lit.has(`${r.name}:${i}`) ? COLORS.C : INK_FAINT;
-          draw.rect(x, y - 5, 1, 1, color);
-          draw.rect(x - 1, y - 4, 3, 1, color);
-          draw.rect(x, y - 3, 1, 1, color);
+          draw.rect(x, y - 6, 1, 1, INK);
+          draw.rect(x - 1, y - 5, 1, 1, INK);
+          draw.rect(x + 1, y - 5, 1, 1, INK);
+          draw.rect(x, y - 4, 1, 1, INK);
+          if (opts.lit.has(`${r.name}:${i}`)) draw.rect(x, y - 5, 1, 1, INK); // lit: filled
         }
       });
       for (const e of r.level.entities) {
@@ -218,8 +224,7 @@ export class MapScreen {
         const p = this.toMap(r.x + e.x, r.y + e.y);
         const x = Math.round(ox + p.x);
         const y = Math.round(oy + p.y);
-        draw.rect(x - 1, y - 5, 3, 3, INK_DARK); // a little inked head
-        draw.rect(x, y - 4, 1, 1, PAPER);
+        draw.rect(x - 1, y - 5, 2, 2, INK); // a little ink dot
       }
     }
 
@@ -229,7 +234,7 @@ export class MapScreen {
       const sel = targets[this.pick];
       const p = this.toMap(sel.x, sel.y);
       const rr = 7 + Math.round(Math.sin(t * 6) * 1.5);
-      ctx.strokeStyle = COLORS.R;
+      ctx.strokeStyle = INK;
       ctx.beginPath();
       ctx.arc(Math.round(ox + p.x) + 0.5, Math.round(oy + p.y) - 3.5, rr, 0, Math.PI * 2);
       ctx.stroke();
@@ -252,7 +257,7 @@ export class MapScreen {
     if (targets.length > 0) {
       const sel = targets[this.pick];
       const room = this.rooms.find((r) => r.name === sel.room);
-      draw.text(`TRAVEL TO ${(room?.title ?? sel.room).toUpperCase()}?`, WIDTH / 2, VIEW.y + VIEW.h + 4, COLORS.R, { align: "center", shadow: null });
+      draw.text(`TRAVEL TO ${(room?.title ?? sel.room).toUpperCase()}?`, WIDTH / 2, VIEW.y + VIEW.h + 4, INK_DARK, { align: "center", shadow: null });
       draw.text(`LEFT RIGHT CHOOSE   ${opts.keys.jump} TRAVEL   ${opts.keys.map} CLOSE`, WIDTH / 2, SHEET.y + SHEET.h - 10, INK_FAINT, { align: "center", shadow: null });
     } else {
       draw.text(`ARROWS MOVE   ${opts.keys.map} CLOSE`, WIDTH / 2, SHEET.y + SHEET.h - 10, INK_FAINT, { align: "center", shadow: null });
@@ -264,8 +269,7 @@ export class MapScreen {
     const { draw } = this;
     const s = SHEET;
     draw.rect(s.x + 2, s.y + 2, s.w, s.h, C.void, 0.5); // shadow
-    draw.rect(s.x, s.y, s.w, s.h, PAPER_DARK);
-    draw.rect(s.x + 2, s.y + 2, s.w - 4, s.h - 4, PAPER);
+    draw.rect(s.x, s.y, s.w, s.h, PAPER);
     for (const [x, y, w, h] of [
       [VIEW.x - 3, VIEW.y - 3, VIEW.w + 6, 1],
       [VIEW.x - 3, VIEW.y + VIEW.h + 2, VIEW.w + 6, 1],
@@ -289,11 +293,11 @@ export class MapScreen {
   /** A little bronze bell (Bell Shrine). */
   private bell(x: number, y: number): void {
     const { draw } = this;
-    draw.rect(x - 1, y - 7, 3, 1, INK_DARK);
-    draw.rect(x - 2, y - 6, 5, 4, COLORS.A);
-    draw.rect(x - 3, y - 2, 7, 1, INK_DARK);
-    draw.rect(x, y - 1, 1, 1, INK_DARK);
-    draw.rect(x - 1, y - 5, 1, 2, C.gold);
+    draw.rect(x - 1, y - 7, 3, 1, INK);
+    draw.rect(x - 2, y - 6, 5, 4, INK);
+    draw.rect(x - 3, y - 2, 7, 1, INK);
+    draw.rect(x, y - 1, 1, 1, INK);
+    draw.rect(x - 1, y - 5, 1, 1, C.gold); // a glint
   }
 
   /** The key of a shrine, for "you are standing here" checks. */
