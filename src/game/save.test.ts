@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SaveStore, formatPlayTime, type SaveData } from "./save";
+import { SaveStore, formatPlayTime, slotSummary, type SaveData } from "./save";
 
 function memory() {
   const data: Record<string, string> = {};
@@ -65,6 +65,14 @@ describe("save store", () => {
     expect(s.load(1)).toBeNull();
     expect(s.lastSlot).toBeNull();
     expect(new SaveStore(null).load(1)).toBeNull();
+  });
+
+  it("summarises a slot for the menu", () => {
+    const s = new SaveStore(memory());
+    s.write(1, { ...sample(), roomTitle: "The Rise", secured: [["a", "page"], ["b", "page"], ["c", "shard"]], playTime: 2520 });
+    expect(slotSummary(s.load(1))).toEqual({ room: "THE RISE", time: "0:42", shards: 1, pages: 2 });
+    expect(slotSummary(null)).toBeNull();
+    expect(slotSummary(s.load(1) && { ...s.load(1)!, roomTitle: undefined })?.room).toBe("THE RISE");
   });
 
   it("formats play time as H:MM", () => {

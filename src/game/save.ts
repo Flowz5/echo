@@ -9,6 +9,8 @@ export interface SaveData {
   version: 1;
   /** room to resume in, and Iris's feet position there */
   room: string;
+  /** the room's title, for the slot screen */
+  roomTitle?: string;
   point: { x: number; y: number };
   abilities: Ability[];
   echoSlots: number;
@@ -106,6 +108,18 @@ export class SaveStore {
       // storage blocked or full: the game goes on without saving
     }
   }
+}
+
+/** What the slot screen shows for a save. */
+export function slotSummary(d: SaveData | null): { room: string; time: string; shards: number; pages: number } | null {
+  if (!d) return null;
+  const count = (kind: CollectibleKind) => d.secured.filter(([, k]) => k === kind).length;
+  return {
+    room: (d.roomTitle ?? d.room.replace(/_/g, " ")).toUpperCase(),
+    time: formatPlayTime(d.playTime),
+    shards: count("shard"),
+    pages: count("page"),
+  };
 }
 
 /** 2520 s -> "0:42" (hours:minutes). */

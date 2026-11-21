@@ -170,6 +170,7 @@ export class GameScene implements Scene {
     return {
       version: 1,
       room: this.current.name,
+      roomTitle: this.current.title,
       point: { ...this.respawnPoint },
       abilities: [...this.progress.abilities],
       echoSlots: this.progress.echoSlots,
