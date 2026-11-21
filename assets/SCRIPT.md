@@ -257,7 +257,7 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 - **REWIND WINDOW:** 2 / 3 / 4 s
 
 ### 4.9 Map & fast travel ✅ (chapter view, Quill's reveal, fast travel; world view, pins, collectible dots and gate locks to come)
-**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built: rooms drawn to scale (2 px per tile) as terrain silhouettes once visited, outlines once Quill revealed them; shrine, crystal (bright when lit) and NPC icons; Iris's Eye blinks where she is; arrows pan.
+**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built as **Quill's own map**: ink on a parchment sheet (3 px per tile). Visited rooms are inked (hatched rock with dark outlines, dashed planks, little red thorns) with the place's name written on them; rooms Quill revealed are dotted outlines; bronze bell, crystal (cyan when lit) and NPC icons; a compass rose and his signature "- Q."; Iris's Eye blinks where she is; arrows pan; the chosen shrine is circled in red when travelling.
 
 **Two zoom levels**
 - **World view:** the whole valley as a vertical cross-section, from Lanternrest at the bottom to the Belltower at the top. Each chapter shows its completion (shards, notes, pages, moments, quests).
