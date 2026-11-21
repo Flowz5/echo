@@ -325,6 +325,59 @@ def make_tile(mask):
     return img
 
 
+def make_tile_ruins(mask):
+    """Chapter 1 ground: cut-stone masonry (staggered blocks) with patchy moss on top, no grass."""
+    T, R, B, L = mask & 1, mask & 2, mask & 4, mask & 8
+    img = Img(16, 16)
+    for y in range(16):
+        for x in range(16):
+            course = y // 4
+            off = 4 if course % 2 else 0
+            if y % 4 == 3 or (x + off) % 8 == 0:
+                k = "1"  # mortar
+            else:
+                r = hsh((x + off) // 8, course, mask + 17)
+                k = "3" if r < 0.3 else "2"
+                if y % 4 == 0 and k == "3":
+                    k = "4"  # the lit top edge of a pale block
+                if hsh(x, y, mask + 5) < 0.04:
+                    k = "1"  # a chip
+            img.set(x, y, k)
+    for y in range(16):
+        for x in range(16):
+            if L and x == 0 or R and x == 15 or B and y == 15:
+                img.set(x, y, "K")
+            elif L and x == 1:
+                img.set(x, y, "3")
+            elif B and y == 14:
+                img.set(x, y, "1")
+    if T:
+        for x in range(16):
+            img.set(x, 0, "K")
+            img.set(x, 1, "4")  # the cut top of the stone
+            if hsh(x // 2, 1, 23) < 0.6:  # moss in patches
+                img.set(x, 1, "n" if hsh(x, 1, 3) < 0.4 else "M")
+                img.set(x, 2, "M")
+                if hsh(x, 3, 23) < 0.5:
+                    img.set(x, 3, "m")
+        if L:
+            img.set(0, 1, "K"), img.set(0, 2, "K"), img.set(0, 3, "K")
+        if R:
+            for yy in (1, 2, 3):
+                img.set(15, yy, "K")
+    for cond, corner, inner in (
+        (T and L, [(0, 0), (1, 0), (0, 1)], (1, 1)),
+        (T and R, [(15, 0), (14, 0), (15, 1)], (14, 1)),
+        (B and L, [(0, 15), (1, 15), (0, 14)], (1, 14)),
+        (B and R, [(15, 15), (14, 15), (15, 14)], (14, 14)),
+    ):
+        if cond:
+            for cx, cy in corner:
+                img.px[cy][cx] = None
+            img.set(*inner, "K")
+    return img
+
+
 # --------------------------------------------------------------------------- props
 SPIKE_HALF = [
     "...KK...",
@@ -894,6 +947,58 @@ def build_mountains():
     return img
 
 
+def build_ruins_skyline():
+    """Chapter 1 far layer: the ruined town across the gorge (broken towers, bridges with a
+    missing span, a bell tower fallen across, low walls). Tiles horizontally."""
+    H = 80
+    img = Img(BW, H)
+    base = H - 18  # the far cliff edge
+    for x in range(BW):
+        for y in range(base + int(periodic(x, [(5, 2, 0.4), (3, 5, 1.1)])), H):
+            img.set(x, y, "1")
+    x = 0
+    i = 0
+    while x < BW:
+        kind = int(hsh(i, 1, 41) * 4)
+        w = 10 + int(hsh(i, 2, 41) * 16)
+        if kind == 0:  # a tower, broken at the top
+            top = base - 20 - int(hsh(i, 3, 41) * 26)
+            for xx in range(x, x + w):
+                cut = int(hsh(xx, 4, 41) * 6)
+                for y in range(top + cut, base + 2):
+                    img.set(xx % BW, y, "2" if xx in (x, x + w - 1) else "1")
+            for y in range(top + 8, base - 4, 9):  # dark windows
+                img.set((x + w // 2) % BW, y, "K")
+                img.set((x + w // 2) % BW, y + 1, "K")
+        elif kind == 1:  # a bridge span on piers, maybe a missing piece
+            top = base - 10
+            gap = hsh(i, 5, 41) < 0.5
+            for xx in range(x, x + w + 10):
+                if gap and x + w // 2 < xx < x + w // 2 + 6:
+                    continue
+                for y in range(top, top + 3):
+                    img.set(xx % BW, y, "2" if y == top else "1")
+                if (xx - x) % 9 in (0, 1):
+                    for y in range(top + 3, base + 2):
+                        img.set(xx % BW, y, "1")
+            w += 10
+        elif kind == 2:  # a fallen bell tower lying across
+            for t in range(w + 14):
+                xx = x + t
+                y0 = base - 6 - int(t * 0.35)
+                for y in range(y0, y0 + 5):
+                    img.set(xx % BW, y, "2" if y == y0 else "1")
+            w += 14
+        else:  # low broken walls
+            top = base - 6 - int(hsh(i, 6, 41) * 6)
+            for xx in range(x, x + w):
+                for y in range(top + int(hsh(xx, 7, 41) * 3), base + 2):
+                    img.set(xx % BW, y, "1")
+        x += w + 6 + int(hsh(i, 8, 41) * 12)
+        i += 1
+    return img
+
+
 def build_hills():
     H = 80
     img = Img(BW, H)
@@ -1010,6 +1115,7 @@ if __name__ == "__main__":
     tiles_img = [make_tile(m) for m in range(16)]
     tiles = sheet(tiles_img)
     tiles.save(S("sprites", "tiles.png"))
+    sheet([make_tile_ruins(m) for m in range(16)]).save(S("sprites", "tiles_ruins.png"))
 
     prop_list = [("spikes", SPIKES), ("button_up", BUTTON_UP), ("button_down", BUTTON_DOWN),
                  ("checkpoint_off", CHECKPOINT_OFF), ("checkpoint_on", CHECKPOINT_ON), ("platform", PLATFORM),
@@ -1055,6 +1161,7 @@ if __name__ == "__main__":
     sky.save(S("backgrounds", "sky.png"))
     mountains.save(S("backgrounds", "mountains.png"))
     hills.save(S("backgrounds", "hills.png"))
+    build_ruins_skyline().save(S("backgrounds", "ruins.png"))
 
     manifest = {
         "_note": "Generated by tools/gen_sprites.py. Keep sizes/layouts when replacing with hand-drawn art.",
@@ -1067,6 +1174,7 @@ if __name__ == "__main__":
             "fps": {"idle": 2, "run": 10, "jump": 1, "fall": 1, "dash": 1, "wall": 1},
         },
         "echo": {"file": "sprites/echo.png", "frame": [16, 16], "animations": anims, "drawAlpha": 0.65},
+        "tiles_ruins": {"file": "sprites/tiles_ruins.png", "frame": [16, 16], "_note": "chapter 1 ground, same autotile layout"},
         "tiles": {
             "file": "sprites/tiles.png", "frame": [16, 16],
             "autotile": "index = top*1 + right*2 + bottom*4 + left*8 (bit set = that side is exposed to air)",
@@ -1086,6 +1194,7 @@ if __name__ == "__main__":
             "sky": {"file": "backgrounds/sky.png", "parallax": 0.0},
             "mountains": {"file": "backgrounds/mountains.png", "parallax": 0.15, "anchor": "bottom"},
             "hills": {"file": "backgrounds/hills.png", "parallax": 0.35, "anchor": "bottom"},
+            "ruins": {"file": "backgrounds/ruins.png", "parallax": 0.35, "anchor": "bottom", "_note": "chapter 1: replaces the hills"},
         },
     }
     with open(S("sprites.json"), "w") as f:

@@ -1,9 +1,11 @@
 import { TILE } from "../config";
 import type { Decor, Level, Tile } from "./level";
+import type { Look } from "./chapters";
 
 /**
- * Procedural dressing: grass, flowers, rocks and mushrooms on every ground top,
- * vines under planks, cobwebs and stalactites indoors. Deterministic (seeded by
+ * Procedural dressing: grass, flowers, rocks and mushrooms on every ground top (moss,
+ * starblooms, roses and rubble in the ruins), vines under planks (climbing roses in the
+ * ruins), cobwebs and stalactites indoors. Deterministic (seeded by
  * the room name), so a room always looks the same.
  */
 function hash(x: number, y: number, seed: number): number {
@@ -21,7 +23,8 @@ function seedOf(name: string): number {
 const isSolid = (t: Tile) => t === "#";
 const isAir = (t: Tile) => t === ".";
 
-export function decorate(level: Level, indoor: boolean): Decor[] {
+export function decorate(level: Level, indoor: boolean, look: Look = "vale"): Decor[] {
+  const ruins = look === "ruins";
   const out: Decor[] = [];
   const seed = seedOf(level.name);
   // keep the ground clear around checkpoints, collectibles, NPCs and spawns
@@ -41,7 +44,14 @@ export function decorate(level: Level, indoor: boolean): Decor[] {
 
       if (isSolid(t) && ty > 0 && isAir(level.tile(tx, ty - 1)) && !busy.has(`${tx},${ty}`)) {
         // a ground top
-        if (!indoor) {
+        if (!indoor && ruins) {
+          if (r < 0.38) out.push({ sprite: `moss${Math.floor(r2 * 3)}`, x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
+          else if (r < 0.43) out.push({ sprite: "starbloom", x, y: top + 1, layer: "mid", flip: false });
+          else if (r < 0.46) out.push({ sprite: "flower_rose", x, y: top + 1, layer: "mid", flip: false });
+          else if (r < 0.53) out.push({ sprite: "rubble_s", x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
+          else if (r < 0.56 && isSolid(level.tile(tx + 1, ty)) && isAir(level.tile(tx + 1, ty - 1))) out.push({ sprite: "rubble_m", x: tx * TILE + 16, y: top + 1, layer: "mid", flip: r2 > 0.5 });
+          if (hash(tx, ty, seed + 2) < 0.06) out.push({ sprite: `moss${Math.floor(r * 3)}`, x: tx * TILE + 8, y: top + 3, layer: "front", flip: true });
+        } else if (!indoor) {
           if (r < 0.42) out.push({ sprite: `grass${Math.floor(r2 * 3)}`, x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
           else if (r < 0.5) out.push({ sprite: ["flower_rose", "flower_bone", "flower_lilac"][Math.floor(r2 * 3)], x, y: top + 1, layer: "mid", flip: false });
           else if (r < 0.55) out.push({ sprite: "rock_s", x, y: top + 1, layer: "mid", flip: r2 > 0.5 });
@@ -63,6 +73,8 @@ export function decorate(level: Level, indoor: boolean): Decor[] {
           const cornerR = isSolid(level.tile(tx + 1, ty + 1));
           if ((cornerL || cornerR) && r < 0.6) out.push({ sprite: "cobweb", x: tx * TILE + (cornerL ? 6 : 10), y: below + 12, layer: "back", flip: cornerR && !cornerL });
           else if (r < 0.12) out.push({ sprite: "stalactite", x: tx * TILE + 8, y: below + 9, layer: "back", flip: false });
+        } else if (ruins && r < 0.1) {
+          out.push({ sprite: "rose_vine", x: tx * TILE + 8, y: below + 30, layer: "back", flip: r2 > 0.5 });
         } else if (r < 0.08) {
           out.push({ sprite: "vine", x: tx * TILE + 8, y: below + 18, layer: "back", flip: false });
         }

@@ -408,6 +408,7 @@ Every required exit and collectible was checked with a reachability solver using
 
 ### Chapter 1: Starfall Ruins
 > Implementation status: placeholder rooms only (Gorge Gate, Ruins Shrine, tools/build_chapter1.py) and a placeholder *Broken Bridges* loop, so the chapter system can be played; the rooms below are the design to build.
+> Art (tools/ruins_art.py, gen_sprites.py): cut-stone ground with patchy moss (`tiles_ruins`), the ruined town across the gorge as the far layer (`backgrounds/ruins.png`), decor `ruin_house`, `ruin_house_small`, `ruin_arch`, `pillar_tall`, `column_fallen`, `bell_fallen` (verdigris, never amber), `rubble_s/m/l`, `rose_bush`, `rose_vine` (hangs), `lantern_dead` (hangs), `lantern_post_bent`, `balustrade`, `banner` (hangs), `statue`, `starbloom`, `moss0-2`; procedural dressing switches to moss, starblooms, roses and rubble (chapters.ts `look: "ruins"`).
 
 **Music:** *Broken Bridges* · **Teaches:** dash, crumble stone, dash flowers, wind vents · **Shard:** Shard of Light (Pip's lantern, unlocks dark rooms)
 
