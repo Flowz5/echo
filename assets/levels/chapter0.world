@@ -111,20 +111,20 @@
    "fileName": "thorn_steps.tmj",
    "x": 9536,
    "y": 0,
-   "width": 1536,
+   "width": 1728,
    "height": 384
   },
   {
    "fileName": "thorn_spire.tmj",
    "x": 9536,
    "y": -256,
-   "width": 1536,
+   "width": 1728,
    "height": 256
   },
   {
    "fileName": "overlook.tmj",
-   "x": 11072,
-   "y": -192,
+   "x": 11264,
+   "y": -176,
    "width": 384,
    "height": 256
   }
