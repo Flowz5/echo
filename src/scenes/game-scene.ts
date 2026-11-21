@@ -841,12 +841,16 @@ export class GameScene implements Scene {
     if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
   }
 
-  /** Puts Iris at a point of a room, in its chapter (switching chapter and music if needed). */
-  private arriveAt(world: World, room: RoomDef, point: Point): void {
+  /**
+   * Puts Iris at a point of a room, in its chapter (switching chapter and music if needed).
+   * `checkpoint`: the point is a shrine (fast travel) and becomes the room's checkpoint; an exit's
+   * arrival spawn is not, so the room keeps its last crystal / shrine.
+   */
+  private arriveAt(world: World, room: RoomDef, point: Point, checkpoint = true): void {
     this.world = world;
     this.setRoom(room);
     this.respawnPoint = point;
-    this.lastCheckpoint.set(room.name, point);
+    if (checkpoint) this.lastCheckpoint.set(room.name, point);
     this.restartRoom();
     this.playChapterMusic(); // same track: keeps playing
   }
@@ -873,7 +877,7 @@ export class GameScene implements Scene {
       cc.arrived = true;
       const world = this.worlds.get(cc.exit.chapter)!;
       const room = world.room(cc.exit.room)!;
-      this.arriveAt(world, room, room.level.spawns[cc.exit.spawn] ?? room.level.spawn);
+      this.arriveAt(world, room, room.level.spawns[cc.exit.spawn] ?? room.level.spawn, false);
       this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
       return;
     }
