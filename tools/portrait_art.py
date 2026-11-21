@@ -95,3 +95,59 @@ def quill():
 
 def build_portraits():
     return [tamsin(), quill()]
+
+
+# Lumi as an echo (16x24, two frames): a small girl with two buns, arm raised holding
+# her kite string. Drawn directly in the echo cyans: she is a memory.
+LUMI_A = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "...........c....",
+    "..........cE....",
+    "....cc.cc.cE....",
+    "...cEEcEEccE....",
+    "...cEEEEEEcE....",
+    "....cEeEeEcE....",
+    "....cEEEEEcc....",
+    "....cEEEEEc.....",
+    ".....ceEec......",
+    "....cCCCCCc.....",
+    "...cCCeCCCCc....",
+    "...cCCCCCCCc....",
+    "..cCCCeCCCCCc...",
+    "..cCCCCCCCCCc...",
+    "..cccCCCCCccc...",
+    ".....cE.Ec......",
+    ".....cE.Ec......",
+    ".....cE.Ec......",
+    "....ccc.ccc.....",
+    "................",
+]
+LUMI_B = LUMI_A[:4] + [
+    "................",
+    "...........c....",
+    "....cc.cc.cE....",
+    "...cEEcEEccE....",
+    "...cEEEEEEcE....",
+    "....cEeEeEcE....",
+    "....cEEEEEcc....",
+    "....cEEEEEc.....",
+    ".....ceEec......",
+    "....cCCCCCc.....",
+    "...cCCeCCCCc....",
+    "...cCCCCCCCc....",
+    "..cCCCeCCCCCc...",
+    "..cccCCCCCccc...",
+    ".....cE.Ec......",
+    ".....cE.Ec......",
+    "....ccc.ccc.....",
+    "................",
+    "................",
+    "................",
+]
+
+
+def build_lumi():
+    return [LUMI_A, LUMI_B]

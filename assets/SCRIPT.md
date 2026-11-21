@@ -682,10 +682,11 @@ At the end, Corin falls to his knees beside the Bell. He doesn't fight anymore.
 **TAMSIN:** Whatever you find up there, whatever you choose…
 **TAMSIN:** …choose it yourself. Not for me. Not for the valley. For you.
 
-### 6.8 Lumi's Moments (silent scenes, one line each)
+### 6.8 Lumi's Moments (silent scenes, one line each) ✅ (scene built, moment 1 placed)
+Touching the moment's kite: time stops (Iris waits, music ducks, the screen dims a little), Lumi fades in as a cyan echo a step away from Iris, her kite floating on its string, sparkles drifting up; her line types out slowly above her with the faint Lingering voice, holds, and she fades away (~5 s, skippable with JUMP/INTERACT after 1 s). Then "LUMI'S MOMENT n/5". A moment is a memory: it is kept at once (not lost on death) and the game saves.
 | # | Where | Scene | Line |
 |---|---|---|---|
-| 1 | Lumi's Field (0-7) | Flying her kite, laughing, spinning | "LOOK, PAPA! IT'S TOUCHING THE STARS!" |
+| 1 | Lumi's Field (0-9) | Flying her kite, laughing, spinning | "LOOK, PAPA! IT'S TOUCHING THE STARS!" |
 | 2 | Lantern Market (1-8) | Tugging a stranger's sleeve | "HAVE YOU SEEN MY PAPA? HE RINGS THE BELL." |
 | 3 | Crystal Hollow (2-10) | Counting with her eyes closed, alone | "…NINE, TEN! READY OR NOT!" `[nobody comes]` |
 | 4 | Archive of Hours (3-9) | Asleep at her father's desk | "IS THE MORNING GOING TO BE BRIGHT?" |

@@ -336,7 +336,7 @@ r.ground(29, 47, 12)                   # after the gap (cols 26-28 = the void)
 r.fill(26, 3, 28, 3)                   # island: high over the gap, out of reach even with a wall kick off the hill
 r.put(1, 7, "S")
 r.put(30, 11, "S")
-r.obj("moment", 15, 6)
+r.obj("moment", 15, 6, index=1)
 r.obj("page", 27, 2)
 r.lingering(38, 11, "THE KITES ALWAYS FLEW HERE.")
 r.deco("tree", 15, 7, "back")
