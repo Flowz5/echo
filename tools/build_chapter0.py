@@ -9,8 +9,11 @@ Coordinates are in tiles. Rooms are drawn with fill operations on a grid
 becomes the source of truth and this script should not be re-run on those rooms.
 
 Measured movement budget (from take-off to landing, same height):
-  tap jump 2.6 tiles / 1.4 high, full jump 3.6 / 2.4 high, double jump 6.6 (4.3 high max),
-  double jump + dash ≈ 9.9. Wall-jump chimneys are 3 tiles wide.
+  tap jump 2.6 tiles / 1.4 high, full jump 4.0 / 2.4 high (running), double jump 6.8 (4.4 high max),
+  jump + double jump + dash ≈ 10, ground dash jump 8.5 (2.7 high), dash jump + double jump ≈ 11.4,
+  jump + air dash + double jump ≈ 11.8. Wall-jump chimneys are 3 tiles wide.
+  Any tall wall can be climbed alone with neutral wall jumps: gates must not leave one within reach.
+  Crystals refill the dash and double jump on touch: keep them away from take-off edges.
 
 Layout (world tiles): band A = y 0..15 (the valley floor), band B = y -16..-1 (the heights),
 band C = y 16..31 (below ground).
