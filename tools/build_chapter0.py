@@ -485,28 +485,131 @@ rooms.append(r)
 
 # ================================================================ 0-13 The Rise
 # The dash tutorial: dash across, dash up, then dash + double jump over the void.
-# Ends on a cliff looking at the ruins (chapter 1 to come).
+# Leads on to the Thorn Steps.
 r = Room("the_rise", "The Rise", 56, 16, (540, 8))
 r.ground(0, 5, 13)
 r.ground(14, 19, 13)                   # after an 8-tile gap: dash needed
 r.ground(22, 27, 7)                    # a high ledge: dash up
 r.fill(37, 8, 40, 8)                   # a lone slab over the void
 r.ground(47, 55, 7)                    # the overlook
-r.fill(55, 0, 55, 6)
 r.put(2, 12, "S")
 r.put(16, 12, "S")
 r.put(24, 6, "C")
-r.put(52, 6, "H")
+r.put(50, 6, "S")
+r.put(52, 6, "C")
 r.text(4, 9, "{dash}: DASH, IN ANY DIRECTION")
 r.text(17, 9, "{up} + {dash}: DASH UP")
-r.text(51, 2, "CHAPTER 1: STARFALL RUINS")
-r.text(51, 3, "COMING SOON")
 r.deco("dead_tree", 3, 13, "back")
 r.deco("ruin_pillar", 18, 13, "back")
 r.deco("pine", 26, 7, "back")
 r.deco("ruin_pillar", 49, 7, "back")
 r.deco("lantern_post", 54, 7)
-r.deco("sign", 48, 7)
+rooms.append(r)
+
+# ================================================================ 0-14 The Thorn Steps
+# The chapter's exam: dash jump, wall jumps and the double jump chained over a
+# thorn pit. Mandatory and "firm but fair": a crystal before every beat.
+# Everything floats (slabs and short walls): long walls rising from the pit could
+# be climbed with wall jumps and would skip the beats.
+#   beat 1  the dash jump: a long low gap under an arch
+#   beat 2  in under a chimney, wall-jump up, dash out to a far ledge
+#   beat 3  dash into a hanging wall, slide, kick off and double jump down to a ledge
+#   beat 4  dash jump + double jump to a last wall, climb it, dash to the exit
+# The chimney's top opens on a hole in the ceiling: the optional Thorn Spire.
+r = Room("thorn_steps", "The Thorn Steps", 96, 24, (596, 0))
+r.spikes(0, 94, 22)                    # the thorn pit
+r.fill(95, 22, 95, 23)
+r.ground(0, 6, 15)                     # entry ledge (from the Rise)
+r.fill(0, 0, 0, 7)                     # rock above the way in
+r.fill(8, 0, 16, 9)                    # beat 1: the arch keeping the jump low
+r.fill(16, 14, 20, 15)                 # landing slab, 9 tiles out
+r.fill(25, 4, 25, 11)                  # beat 2: the chimney's left wall (go in under it)
+r.fill(29, 4, 29, 21)                  # …and its right wall
+r.fill(40, 4, 45, 5)                   # beat 2 landing slab, 10 tiles out
+r.fill(56, 0, 56, 6)                   # beat 3: a wall hanging from the cliff above
+r.fill(63, 10, 67, 11)                 # the slab below it
+r.fill(78, 2, 78, 12)                  # beat 4: the last wall, 10 tiles out
+r.fill(89, 3, 95, 4)                   # the exit ledge, high up, 10 tiles out
+r.fill(95, 5, 95, 21)
+r.put(1, 14, "S")
+r.put(4, 14, "C")
+r.put(17, 13, "C")
+r.put(42, 3, "C")
+r.put(63, 9, "C")
+r.put(92, 2, "S")
+r.text(3, 11, "{dash} THEN {jump}: KEEP YOUR SPEED")
+r.deco("ruin_pillar", 2, 15, "back")
+r.deco("lantern_post", 5, 15)
+r.deco("dead_tree", 19, 14, "back")
+r.deco("ruin_pillar", 44, 4, "back")
+r.deco("pine_small", 64, 10, "back")
+r.deco("ruin_pillar", 93, 3, "back", flip=True)
+r.deco("lantern_post", 90, 3)
+r.deco("rock_m", 6, 15)
+r.deco("bush_small", 3, 15)
+r.deco("crystals", 41, 4)
+r.deco("rock_s", 66, 10)
+r.deco("bush", 91, 3)
+r.deco("flower_bone", 20, 14)
+r.hang("vine", 9, 9)              # under the arch
+r.hang("hanging_lantern", 12, 9)
+r.hang("vine", 15, 9)
+r.hang("vine", 18, 15)                 # under the slabs
+r.hang("vine", 43, 5)
+r.hang("vine", 56, 6)            # the hanging wall
+r.hang("vine", 65, 11)
+r.hang("vine", 78, 12)            # the last wall
+r.hang("hanging_lantern", 90, 4)
+rooms.append(r)
+
+# ================================================================ 0-14a The Thorn Spire (optional)
+# Above the Thorn Steps: long chains with no ground and one crystal at the door.
+# A Lost Page at the far end, then a drop back down onto the Steps' exit ledge.
+r = Room("thorn_spire", "The Thorn Spire", 96, 16, (596, -16))
+r.spikes(1, 94, 14)                    # thorns on the Steps' roof
+r.fill(0, 0, 0, 15)
+r.fill(95, 0, 95, 15)
+r.ground(22, 32, 11)                   # the door ledge, around the hole
+r.clear(26, 11, 28, 15)                # the way up from the chimney
+r.fill(41, 3, 41, 9)                   # lone wall, 8 tiles out
+r.fill(49, 8, 50, 8)                   # small slab
+r.fill(58, 2, 58, 8)                   # second wall
+r.fill(66, 6, 66, 6)                   # one-tile stone
+r.fill(74, 2, 74, 9)                   # last wall
+r.fill(80, 8, 85, 9)                   # the page's ledge
+r.clear(88, 14, 90, 15)                # the drop back down onto the exit ledge
+r.put(24, 10, "C")
+r.put(30, 10, "S")
+r.obj("page", 83, 7)
+r.deco("ruin_pillar", 23, 11, "back")
+r.deco("dead_tree", 81, 8, "back")
+r.deco("lantern_post", 30, 11)
+r.deco("crystals", 84, 8)
+r.hang("vine", 41, 9)
+r.hang("hanging_lantern", 58, 8)
+r.hang("vine", 66, 6)
+r.hang("vine", 74, 9)
+r.hang("hanging_lantern", 82, 9)
+rooms.append(r)
+
+# ================================================================ 0-15 The Overlook
+# The end of the Quiet Vale: a Bell Shrine and the ruins of chapter 1 in the distance.
+r = Room("overlook", "The Overlook", 24, 16, (692, -12))
+r.ground(0, 23, 15)
+r.fill(0, 0, 0, 11)
+r.fill(23, 0, 23, 14)
+r.put(1, 14, "S")
+r.put(14, 14, "H")
+r.text(12, 9, "CHAPTER 1: STARFALL RUINS")
+r.text(12, 10, "COMING SOON")
+r.deco("ruin_pillar", 4, 15, "back")
+r.deco("pine", 20, 15, "back")
+r.deco("lantern_post", 10, 15)
+r.deco("sign", 18, 15)
+r.deco("bush", 7, 15)
+r.deco("rock_l", 21, 15)
+r.deco("flower_lilac", 12, 15)
+r.deco("dead_tree", 2, 15, "back")
 rooms.append(r)
 
 write_world("chapter0", [room.export() for room in rooms])
