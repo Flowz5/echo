@@ -401,6 +401,64 @@ CRUMBLE = [
 ]
 
 
+# dash flower (chapter 1): a rose bud (spent, regrowing) and an open bloom (ready)
+FLOWER_BUD = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "......KKK.......",
+    ".....KpPpK......",
+    ".....KpPpK......",
+    "......KpK.......",
+    ".......M........",
+    ".....KMMK.......",
+    "......KMMK......",
+    ".......M........",
+    ".......M........",
+    "................",
+    "................",
+]
+FLOWER_BLOOM = [
+    "................",
+    "................",
+    "....KK...KK.....",
+    "...KqPK.KPqK....",
+    "...KPqPKPqPK....",
+    "....KPPqPPK.....",
+    "...KPqPyPqPK....",
+    "...KPPqPqPPK....",
+    "....KpPPPpK.....",
+    ".....KpppK......",
+    "......KMK.......",
+    ".....KMMMK......",
+    "....KMK.KMK.....",
+    ".......M........",
+    ".......M........",
+    "................",
+]
+# wind vent grate (chapter 1): sits on the bottom edge of the air column
+VENT = [
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "................",
+    "KKKKKKKKKKKKKKKK",
+    "KgGgGgGgGgGgGgGK",
+    "KGKGKGKGKGKGKGKK",
+    "KgGgGgGgGgGgGgGK",
+    "KGGGGGGGGGGGGGGK",
+    "KKKKKKKKKKKKKKKK",
+]
+
+
 def make_door(open_):
     img = Img(16, 32)
     for y in range(32):
@@ -953,7 +1011,8 @@ if __name__ == "__main__":
     tiles.save(S("sprites", "tiles.png"))
 
     prop_list = [("spikes", SPIKES), ("button_up", BUTTON_UP), ("button_down", BUTTON_DOWN),
-                 ("checkpoint_off", CHECKPOINT_OFF), ("checkpoint_on", CHECKPOINT_ON), ("platform", PLATFORM)]
+                 ("checkpoint_off", CHECKPOINT_OFF), ("checkpoint_on", CHECKPOINT_ON), ("platform", PLATFORM),
+                 ("crumble", CRUMBLE), ("flower_bud", FLOWER_BUD), ("flower_bloom", FLOWER_BLOOM), ("vent", VENT)]
     props = sheet([from_grid(g) for _, g in prop_list])
     props.save(S("sprites", "props.png"))
     door = sheet([make_door(False), make_door(True)])

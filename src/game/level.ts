@@ -29,6 +29,12 @@ export interface Field {
   /** the lift never pushes faster up than this (px/s) */
   liftCap: number;
 }
+/** frames in sprites/props.png */
+const PROP_CRUMBLE = 6;
+const PROP_BUD = 7;
+const PROP_BLOOM = 8;
+const PROP_VENT = 9;
+
 export const NEUTRAL_FIELD: Field = { gravity: 1, fall: 1, lift: 0, liftCap: 0 };
 export const DRIFT_GRAVITY = 0.45;
 export const DRIFT_FALL = 0.6;
@@ -266,8 +272,29 @@ export class Level {
         else if (t === "-") draw.frame(draw.img.props, 5, sx, sy);
         else if (t === "b") draw.frame(draw.img.props, this.platesPressed[plate - 1] ? 2 : 1, sx, sy);
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
+        else if (t === "=") this.renderCrumble(draw, tx, ty, sx, sy);
       }
     }
+  }
+
+  /** Shaking: a 1-px jitter. Gone: a faint dotted outline where it will come back. */
+  private renderCrumble(draw: Draw, tx: number, ty: number, sx: number, sy: number): void {
+    const s = this.mech.crumbleState(tx, ty);
+    if (s.phase === "gone") {
+      for (let i = 0; i < TILE; i += 3) {
+        draw.rect(sx + i, sy, 2, 1, "#8a8aa8", 0.45);
+        draw.rect(sx + i, sy + TILE - 1, 2, 1, "#8a8aa8", 0.45);
+      }
+      return;
+    }
+    const jitter = s.phase === "shaking" ? (Math.floor(s.t * 40) % 2 ? 1 : -1) : 0;
+    draw.frame(draw.img.props, PROP_CRUMBLE, sx + jitter, sy);
+  }
+
+  /** Dash flowers and vent grates. */
+  renderMechanics(draw: Draw, camX: number, camY: number): void {
+    this.flowers.forEach((f, i) => draw.frame(draw.img.props, this.mech.flowerOpen(i) ? PROP_BLOOM : PROP_BUD, Math.round(f.x - 8 - camX), Math.round(f.y - 8 - camY)));
+    for (const v of this.vents) for (let x = v.x; x < v.x + v.w; x += TILE) draw.frame(draw.img.props, PROP_VENT, x - camX, v.y + v.h - TILE - camY);
   }
 
   /** Crystals and shrines: drawn after the decorations so nothing hides them. */

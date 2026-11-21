@@ -121,6 +121,8 @@ export class GameScene implements Scene {
   private readonly pauseMenu: OptionList;
 
   private history: PlayerSnapshot[] = [];
+  /** Iris is inside a Drift zone (music muffled) */
+  private inDrift = false;
   /** mechanics state recorded alongside `history`, step for step */
   private mechHistory: MechSnapshot[] = [];
   private rewinding: Rewinding | null = null;
@@ -627,7 +629,9 @@ export class GameScene implements Scene {
     }
     this.renderDecor("back", camX, camY);
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
+    this.renderAir(camX, camY);
     this.renderDecor("mid", camX, camY);
+    this.level.renderMechanics(draw, camX, camY);
     this.level.renderCheckpoints(draw, camX, camY);
     this.renderEntities(camX, camY);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
@@ -863,14 +867,76 @@ export class GameScene implements Scene {
     if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
   }
 
-  /** Feedback for crumble stones and regrowing flowers (filled in by the look-and-sound pass). */
+  /** Feedback for crumble stones and regrowing flowers. */
   private onMechEvents(events: MechEvent[]): void {
-    void events;
+    for (const e of events) {
+      if (e.kind === "regrow") {
+        const f = this.level.flowers[e.flower];
+        this.fx.burst(f.x, f.y, 4, { colors: [COLORS.M, COLORS.n], speed: 20, life: 0.3 });
+        continue;
+      }
+      const run = this.level.mech.runs[e.run].rect;
+      if (e.kind === "shake") {
+        this.ctx.sfx("crumbleShake");
+        this.fx.burst(run.x + run.w / 2, run.y, 3, { colors: [COLORS["3"], COLORS["4"]], speed: 20, life: 0.3, gravity: 200 });
+      } else if (e.kind === "fall") {
+        this.ctx.sfx("crumbleFall");
+        for (let x = run.x + 4; x < run.x + run.w; x += 8)
+          this.fx.burst(x, run.y + 8, 3, { colors: [COLORS["2"], COLORS["3"], COLORS["4"], COLORS.K], speed: 40, life: 0.7, gravity: 400 });
+      } else {
+        this.ctx.sfx("crumbleReform");
+        this.fx.burst(run.x + run.w / 2, run.y + 8, 5, { colors: [COLORS["4"], COLORS.g], speed: 25, life: 0.3 });
+      }
+    }
+    // Drift: entering muffles the music, leaving clears it
+    const inDrift = !this.player.dead && this.level.fieldAt(this.player.hitbox).gravity < 1;
+    if (inDrift !== this.inDrift) {
+      this.inDrift = inDrift;
+      this.ctx.audio.setFiltered(inDrift);
+      if (inDrift) this.ctx.sfx("driftIn");
+    }
   }
 
-  /** Feedback for a flower just used. */
+  /** Feedback for a flower just used: petals and a pop. */
   private onFlowerUsed(index: number): void {
-    void index;
+    const f = this.level.flowers[index];
+    this.ctx.sfx("flower");
+    this.fx.burst(f.x, f.y, 10, { colors: [COLORS.P, COLORS.q, COLORS.p], speed: 45, life: 0.5, gravity: 60 });
+  }
+
+  /** The air you can see: rising streaks over vents; Drift zones' tint, shimmering outline and slow motes. */
+  private renderAir(camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    const t = this.t;
+    for (const v of this.level.vents) {
+      const n = Math.max(4, Math.round((v.w / 16) * 6));
+      for (let i = 0; i < n; i++) {
+        const seed = i * 53.7 + v.x;
+        const h = v.h - 6;
+        const y = v.y + v.h - 6 - ((t * (90 + (i % 3) * 25) + seed * 7) % h);
+        const x = v.x + 2 + ((seed * 13.1) % (v.w - 4));
+        draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 6, COLORS.W, 0.5 * Math.min(1, (y - v.y) / 24));
+      }
+    }
+    for (const d of this.level.drifts) {
+      draw.rect(Math.round(d.x - camX), Math.round(d.y - camY), d.w, d.h, COLORS.c, 0.12);
+      const off = Math.floor(t * 6) % 4;
+      for (let x = off; x < d.w; x += 4) {
+        draw.rect(Math.round(d.x + x - camX), Math.round(d.y - camY), 1, 1, COLORS.C, 0.55);
+        draw.rect(Math.round(d.x + d.w - 1 - x - camX), Math.round(d.y + d.h - 1 - camY), 1, 1, COLORS.C, 0.55);
+      }
+      for (let y = off; y < d.h; y += 4) {
+        draw.rect(Math.round(d.x + d.w - 1 - camX), Math.round(d.y + y - camY), 1, 1, COLORS.C, 0.55);
+        draw.rect(Math.round(d.x - camX), Math.round(d.y + d.h - 1 - y - camY), 1, 1, COLORS.C, 0.55);
+      }
+      const motes = Math.round((d.w * d.h) / 1600);
+      for (let i = 0; i < motes; i++) {
+        const seed = i * 71.3 + d.y;
+        const x = d.x + ((seed * 17.9) % d.w) + Math.sin(t * 0.8 + seed) * 4;
+        const y = d.y + ((t * (6 + (i % 4) * 2) + seed * 11) % d.h);
+        draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 1, COLORS.e, 0.6);
+      }
+    }
   }
 
   /**
