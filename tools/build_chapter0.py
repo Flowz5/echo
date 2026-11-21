@@ -25,71 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ascii_to_tiled import write_world  # noqa: E402
-
-
-class Room:
-    def __init__(self, name, title, w, h, at, echoes=3, props=None):
-        self.name, self.title, self.w, self.h, self.at = name, title, w, h, at
-        self.grid = [["."] * w for _ in range(h)]
-        self.objects = []
-        self.echoes = echoes
-        self.props = {"title": title, **(props or {})}
-
-    # ---- terrain
-    def fill(self, x0, y0, x1, y1, ch="#"):
-        """Inclusive rectangle."""
-        for y in range(min(y0, y1), max(y0, y1) + 1):
-            for x in range(min(x0, x1), max(x0, x1) + 1):
-                assert 0 <= x < self.w and 0 <= y < self.h, f"{self.name}: ({x},{y}) outside {self.w}x{self.h}"
-                self.grid[y][x] = ch
-
-    def clear(self, x0, y0, x1, y1):
-        self.fill(x0, y0, x1, y1, ".")
-
-    def ground(self, x0, x1, top):
-        """Solid from row `top` down to the bottom of the room."""
-        self.fill(x0, top, x1, self.h - 1)
-
-    def plank(self, x0, x1, y):
-        self.fill(x0, y, x1, y, "-")
-
-    def spikes(self, x0, x1, y):
-        """Spikes on row y, solid ground under them."""
-        self.fill(x0, y, x1, y, "^")
-        self.fill(x0, y + 1, x1, self.h - 1)
-
-    def put(self, x, y, ch):
-        assert self.grid[y][x] not in "SCH", f"{self.name}: ({x},{y}) already holds a {self.grid[y][x]} marker"
-        self.fill(x, y, x, y, ch)
-
-    # ---- objects
-    def obj(self, kind, x, y, **props):
-        self.objects.append({"type": kind, "at": (x, y), "props": props} if props else {"type": kind, "at": (x, y)})
-
-    def npc(self, x, y, name):
-        self.obj("npc", x, y, name=name)
-
-    def text(self, x, y, text):
-        self.obj("text", x, y, text=text)
-
-    def lingering(self, x, y, text, flip=False):
-        self.obj("lingering", x, y, text=text, **({"flip": True} if flip else {}))
-
-    def deco(self, sprite, x, ground_row, layer="mid", flip=False):
-        """A decoration standing on the ground whose top is `ground_row`."""
-        props = {"sprite": sprite, "layer": layer}
-        if flip:
-            props["flip"] = True
-        self.obj("deco", x, ground_row - 1, **props)
-
-    def hang(self, sprite, x, ceiling_row, layer="back"):
-        """A decoration hanging under the solid tile at `ceiling_row` (bottom at its length)."""
-        lengths = {"hanging_lantern": 1, "vine": 1, "vine_long": 2, "cobweb": 1, "stalactite": 1}
-        self.obj("deco", x, ceiling_row + lengths.get(sprite, 1), sprite=sprite, layer=layer)
-
-    def export(self):
-        return {"name": self.name, "at": self.at, "echoes": self.echoes, "props": self.props,
-                "objects": self.objects, "rows": ["".join(r) for r in self.grid]}
+from room_builder import Room  # noqa: E402
 
 
 rooms = []
@@ -605,19 +541,20 @@ r.hang("hanging_lantern", 82, 9)
 rooms.append(r)
 
 # ================================================================ 0-15 The Overlook
-# The end of the Quiet Vale: a Bell Shrine and the ruins of chapter 1 in the distance.
+# The end of the Quiet Vale: a Bell Shrine, and an archway in the right wall leading on to chapter 1.
 r = Room("overlook", "The Overlook", 24, 16, (704, -11))
 r.ground(0, 23, 15)
 r.fill(0, 0, 0, 10)
-r.fill(23, 0, 23, 14)
+r.fill(23, 0, 23, 11)                  # the right wall, with an archway at its foot (rows 12-14)
 r.put(1, 14, "S")
+r.put(21, 14, "S")                     # spawn 1: arriving back from chapter 1
 r.put(14, 14, "H")
-r.text(12, 9, "CHAPTER 1: STARFALL RUINS")
-r.text(12, 10, "COMING SOON")
+r.exit(23, 14, "chapter1", "gorge_gate")  # through the archway
 r.deco("ruin_pillar", 4, 15, "back")
 r.deco("pine", 20, 15, "back")
 r.deco("lantern_post", 10, 15)
-r.deco("sign", 18, 15)
+r.deco("sign_arrow", 19, 15)
+r.hang("hanging_lantern", 23, 11)      # lights the archway
 r.deco("bush", 7, 15)
 r.deco("rock_l", 21, 15)
 r.deco("flower_lilac", 12, 15)

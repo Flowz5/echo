@@ -54,6 +54,13 @@ export interface Entity extends Point {
   props: Props;
 }
 
+/** A chapter exit (Tiled "exit"): touching it takes Iris to `room` in `chapter`, on that room's spawn #`spawn`. */
+export interface Exit extends Rect {
+  chapter: string;
+  room: string;
+  spawn: number;
+}
+
 export function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -68,6 +75,8 @@ export class Level {
   readonly spawns: Point[];
   readonly checkpoints: Checkpoint[];
   readonly entities: Entity[];
+  /** chapter exits, as room-local rects */
+  readonly exits: Exit[];
   /** hand-placed (Tiled "deco" objects) + procedural decorations */
   decor: Decor[] = [];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
@@ -82,7 +91,13 @@ export class Level {
 
   constructor(
     map: string[],
-    opts: { name?: string; spawns?: Point[]; checkpoints?: (Point & { kind?: Checkpoint["kind"] })[]; entities?: Entity[] } = {},
+    opts: {
+      name?: string;
+      spawns?: Point[];
+      checkpoints?: (Point & { kind?: Checkpoint["kind"] })[];
+      entities?: Entity[];
+      exits?: Exit[];
+    } = {},
   ) {
     this.name = opts.name ?? "room";
     this.rows = map.length;
@@ -107,6 +122,7 @@ export class Level {
     this.spawns = spawns;
     this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ kind: "crystal" as const, ...c, active: false }));
     this.entities = opts.entities ?? [];
+    this.exits = opts.exits ?? [];
   }
 
   /** Default spawn (first one). */

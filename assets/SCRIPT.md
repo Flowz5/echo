@@ -193,7 +193,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 - **Echo shield:** an echo blocks Stillness fog streams and moving hazards.
 - **Phase step** (chapter 4): ring a chime so echoes go intangible, pass through, and they become solid again behind you.
 
-### 4.3 Checkpoints & saving ✅ (saving: 3 slots, auto-save at crystals and shrines)
+### 4.3 Checkpoints & saving ✅ (saving: 3 slots, auto-save at crystals, shrines and every change of chapter; the save remembers the chapter)
 | Type | Look | Function |
 |---|---|---|
 | **Echo Crystal** | cyan crystal on a stone base, dim grey until touched ✅ sprite | Room checkpoint. On death, Iris respawns at the last touched crystal instantly. Touching one refills dash and double jump |
@@ -256,8 +256,8 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 - **INVINCIBLE:** ON / OFF (spikes and void respawn you at the last safe spot)
 - **REWIND WINDOW:** 2 / 3 / 4 s
 
-### 4.9 Map & fast travel ✅ (chapter view, Quill's reveal, fast travel; world view, pins, collectible dots and gate locks to come)
-**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built as **Quill's own map**: ink on a parchment sheet (3 px per tile). Calm, almost monochrome sepia: visited rooms show their rock as a light sepia wash with an inked outline, planks as thin lines, thorns as small ticks, and the place's name; rooms Quill revealed are dotted outlines; ink bell (with a gold glint), crystal (filled when lit) and NPC dot; a compass rose and his signature "- Q."; only Iris's Eye has a touch of cyan; arrows pan; the chosen shrine is circled in ink when travelling.
+### 4.9 Map & fast travel ✅ (chapter view, Quill's reveal, fast travel across chapters; world view, pins, collectible dots and gate locks to come)
+**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built as **Quill's own map**: ink on a parchment sheet (3 px per tile). Calm, almost monochrome sepia: visited rooms show their rock as a light sepia wash with an inked outline, planks as thin lines, thorns as small ticks, and the place's name; rooms Quill revealed are dotted outlines; ink bell (with a gold glint), crystal (filled when lit) and NPC dot; a compass rose and his signature "- Q."; only Iris's Eye has a touch of cyan; arrows pan; the chosen shrine is circled in ink when travelling. The header reads "< CHAPTER 0 - THE QUIET VALE >": pressing left/right against the edge of the drawing turns to the previous/next chapter Iris has visited; when travelling, left/right past the first/last shrine turns the page too, so any lit shrine of any chapter can be picked.
 
 **Two zoom levels**
 - **World view:** the whole valley as a vertical cross-section, from Lanternrest at the bottom to the Belltower at the top. Each chapter shows its completion (shards, notes, pages, moments, quests).
@@ -392,7 +392,7 @@ Iris wakes up in Lanternrest on her "birthday", the day Tamsin decided she is ol
 | 0-13 | The Rise | The dash tutorial: dash across an 8-tile gap, dash up a 6-tile ledge, dash + double jump over the void, then on to the Thorn Steps |
 | 0-14 | The Thorn Steps | **The chapter's exam** (firm but fair, a crystal before every beat), floating slabs, stones and short walls over a thorn pit: (1) the **dash jump** + double jump over 8 tiles under an arch; (2) dash jump into a chimney, wall-jump up, dash out 8 tiles from the top; (3) drop to a rest, then dash jump + double jump up onto a two-tile stone (8) and up again to a slab (7); (4) the same onto a second stone (8), then up to the exit ledge (5 out, 2 up). Every beat checked with natural inputs at several timings; experts may find lines without the dash
 | 0-14a | The Thorn Spire ★ | Optional, **really demanding**: up through the hole above the chimney. One crystal at the door, then walls, a slab and a lone stone with no ground, every jump needing the dash. A Lost Page at the far end, then drop back onto the Steps' exit ledge |
-| 0-15 | The Overlook | The end of chapter 0: a Bell Shrine and "Chapter 1: Starfall Ruins, coming soon" |
+| 0-15 | The Overlook | The end of chapter 0: a Bell Shrine, and the way on to chapter 1 at the right wall (a chapter exit: fade, "CHAPTER 1 / STARFALL RUINS" card on the first visit, music changes) |
 
 Characters in the chapter: Tamsin and Quill only, plus four Lingering villagers. Rooms are dressed with hand-placed props (houses, trees, fences, lanterns, mill wheel…) and procedural details (grass that sways, flowers, rocks, mushrooms, vines, cobwebs, stalactites), with fireflies outside and dust inside.
 
@@ -407,6 +407,8 @@ Every required exit and collectible was checked with a reachability solver using
 **Ending beat:** as Iris lifts the shard, a violet fog seeps from the cliffs above. A tall silhouette watches her from the ridge (the Stillwarden, first sighting), then disappears.
 
 ### Chapter 1: Starfall Ruins
+> Implementation status: placeholder rooms only (Gorge Gate, Ruins Shrine, tools/build_chapter1.py) and a placeholder *Broken Bridges* loop, so the chapter system can be played; the rooms below are the design to build.
+
 **Music:** *Broken Bridges* · **Teaches:** dash, crumble stone, dash flowers, wind vents · **Shard:** Shard of Light (Pip's lantern, unlocks dark rooms)
 
 The ruins of the Tollers' old town, built on stone bridges over a bottomless gorge. Stars seem close enough to touch. Fallen bell towers lie across the gaps.

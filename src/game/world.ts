@@ -1,6 +1,6 @@
 import { TILE, manifest } from "../config";
 import { decorate } from "./decorate";
-import { Level, type Checkpoint, type Decor, type Entity, type Point, type Props, type Tile } from "./level";
+import { Level, type Checkpoint, type Decor, type Entity, type Exit, type Point, type Props, type Tile } from "./level";
 import { parseAbilities, type Ability } from "./progress";
 
 /**
@@ -11,7 +11,8 @@ import { parseAbilities, type Ability } from "./progress";
  *   - tile layer "terrain" using the "terrain" tileset (ids: 0 ground, 1 platform, 2 spikes, 3 plate, 4 door)
  *   - object layer "objects" with point objects of class:
  *       spawn, checkpoint, shrine, shard, note, page, moment, npc, text, lingering,
- *       deco (properties: sprite, layer = back/mid/front, flip)
+ *       deco (properties: sprite, layer = back/mid/front, flip),
+ *       exit (properties: chapter, room, spawn; a point = its whole column, a rectangle = its area)
  *   - optional map property "echoes" (int): max echoes in the room
  *   - optional map property "title" (string): name shown when entering the room
  *   - optional map property "indoor" (bool): a stone back wall instead of the night sky
@@ -62,6 +63,8 @@ interface TiledWorld {
 
 export interface RoomDef {
   name: string;
+  /** the chapter (world) this room belongs to */
+  chapter: string;
   /** shown when entering the room */
   title: string;
   /** stone back wall instead of the sky */
@@ -114,6 +117,7 @@ function parseMap(name: string, json: string): ParsedMap {
   const checkpoints: (Point & { kind: Checkpoint["kind"] })[] = [];
   const entities: Entity[] = [];
   const decor: Decor[] = [];
+  const exits: Exit[] = [];
   for (const layer of map.layers) {
     if (layer.type !== "objectgroup") continue;
     for (const o of layer.objects ?? []) {
@@ -121,6 +125,17 @@ function parseMap(name: string, json: string): ParsedMap {
       // points mark feet; for rectangles, use their bottom-centre
       const p = { x: o.x + (o.width ?? 0) / 2, y: o.y + (o.height ?? 0) };
       if (kind === "spawn") spawns.push(p);
+      else if (kind === "exit") {
+        const pr = props(o.properties);
+        if (typeof pr.chapter !== "string" || typeof pr.room !== "string") {
+          console.warn(`${name}: exit ${o.id} needs "chapter" and "room" properties`);
+          continue;
+        }
+        const rect = o.width
+          ? { x: o.x, y: o.y, w: o.width, h: o.height ?? TILE }
+          : { x: Math.floor(o.x / TILE) * TILE, y: 0, w: TILE, h: map.height * TILE };
+        exits.push({ ...rect, chapter: pr.chapter, room: pr.room, spawn: typeof pr.spawn === "number" ? pr.spawn : 0 });
+      }
       else if (kind === "checkpoint") checkpoints.push({ ...p, kind: "crystal" });
       else if (kind === "shrine") checkpoints.push({ ...p, kind: "shrine" });
       else if (kind === "deco") {
@@ -133,7 +148,7 @@ function parseMap(name: string, json: string): ParsedMap {
     }
   }
   const mapProps = props(map.properties);
-  const level = new Level(rows, { name, spawns, checkpoints, entities });
+  const level = new Level(rows, { name, spawns, checkpoints, entities, exits });
   level.decor = decor;
   return {
     level,
@@ -143,12 +158,15 @@ function parseMap(name: string, json: string): ParsedMap {
 }
 
 export class World {
+  /** the world file name, e.g. "chapter0" (= the chapter id) */
+  readonly id: string;
   readonly rooms: RoomDef[];
   /** abilities and echo slots Iris starts this chapter with (first room's properties) */
   readonly startAbilities: Ability[] = [];
   startEchoSlots = 0;
 
   constructor(worldName: string) {
+    this.id = worldName;
     const worldPath = Object.keys(WORLD_FILES).find((p) => fileName(p) === `${worldName}.world`);
     if (!worldPath) throw new Error(`World "${worldName}" not found in assets/levels/`);
     const world = JSON.parse(WORLD_FILES[worldPath]) as TiledWorld;
@@ -163,7 +181,7 @@ export class World {
       }
       if (level.width < 320 || level.height < 180) console.warn(`Room ${name} is smaller than the screen (min 20x12 tiles)`);
       const title = typeof roomProps.title === "string" ? roomProps.title : name.replace(/[-_]/g, " ");
-      return { name, title, indoor: roomProps.indoor === true, level, x: m.x, y: m.y, maxEchoes };
+      return { name, chapter: worldName, title, indoor: roomProps.indoor === true, level, x: m.x, y: m.y, maxEchoes };
     });
     // edges look into the neighbouring rooms
     for (const room of this.rooms) {
@@ -191,6 +209,10 @@ export class World {
         (r) => r !== except && wx >= r.x && wx < r.x + r.level.width && wy >= r.y && wy < r.y + r.level.height,
       ) ?? null
     );
+  }
+
+  room(name: string): RoomDef | null {
+    return this.rooms.find((r) => r.name === name) ?? null;
   }
 
   /** The room holding the first spawn: where a new run starts. */

@@ -80,9 +80,34 @@ const FIRST_STEPS: TrackDef = {
   delay: { time: (60 / 132) * 0.75, feedback: 0.25, mix: 0.22 },
 };
 
+/** Chapter 1, Starfall Ruins (placeholder): open, airy, stars close over a gorge. */
+const BROKEN_BRIDGES: TrackDef = {
+  title: "Broken Bridges",
+  bpm: 104,
+  volume: 1.2,
+  chords: ["Em", "C", "G", "D", "Em", "C", "Am", "B"],
+  lead: [
+    "B4 - - - E5 - - - G5 - - - F#5 - E5 -",
+    "E5 - - - - - - - . . G5 - A5 - B5 -",
+    "D5 - - - - - B4 - D5 - - - G5 - - -",
+    "F#5 - - - - - - - A5 - - - F#5 - D5 -",
+    "B4 - - - E5 - - - B5 - - - A5 - G5 -",
+    "G5 - - - - - - - E5 - - - G5 - C6 -",
+    "B5 - - - A5 - - - E5 - - - C5 - - -",
+    "D#5 - - - - - - - F#5 - - - B4 - - -",
+  ],
+  leadWave: "pulse12",
+  bass: "hold",
+  arp: true,
+  pad: true,
+  drums: ["k.......s.......", "k.......s...h...", "k.......s.......", "k.....k.s...h.h."],
+  delay: { time: (60 / 104) * 0.75, feedback: 0.42, mix: 0.38 },
+};
+
 export const TRACKS = {
   menu: STARLIT_VALE,
   vale: FIRST_STEPS,
+  ruins: BROKEN_BRIDGES,
 } satisfies Record<string, TrackDef>;
 
 export type TrackName = keyof typeof TRACKS;

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Echo — sanity checks for a Tiled world.
 
-    python3 tools/check_world.py chapter0
+    python3 tools/check_world.py            # every chapter*.world
+    python3 tools/check_world.py chapter0   # just these worlds
 
 Reports: overlapping rooms, rooms smaller than the screen, edge openings that lead
 nowhere (into a wall, or into the void at the bottom), and objects placed inside
-walls or floating where they should stand on the ground.
+walls or floating where they should stand on the ground. Across worlds: room names
+used twice (saves key on room names) and chapter exits that lead nowhere or drop
+Iris straight back onto the return exit.
 """
+import glob
 import json
 import os
 import sys
@@ -124,9 +128,12 @@ def main(world):
                 [((0, ty), (-1, ty), "left") for ty in range(r["h"])] + \
                 [((r["w"] - 1, ty), (r["w"], ty), "right") for ty in range(r["h"])]
         leads = {}
+        exit_columns = {int(o["x"] // TILE) for o in exits(r)}
         for (ix, iy), (ox, oy), side in edges:
             if tile(r, ix, iy) in SOLID:
                 continue
+            if side in ("left", "right") and ix in exit_columns:
+                continue  # a chapter exit stands on this edge: Iris leaves through it
             other = room_at(rooms, r["x"] + ox, r["y"] + oy, r)
             if other is None:
                 key = (side, "void" if side == "bottom" else "wall")
@@ -154,15 +161,66 @@ def main(world):
     for r in rooms:
         check_decor(r, problems)
 
-    print(f"{world}: {len(rooms)} rooms")
+    report(f"{world}: {len(rooms)} rooms", notes, problems)
+    return 1 if problems else 0
+
+
+def report(title, notes, problems):
+    print(title)
     for n in notes:
         print("  ·", n)
     for p in problems:
         print("  ✗", p)
     if not problems:
         print("  ✓ no problems found")
-    return 1 if problems else 0
+
+
+def exits(room):
+    return [o for o in room["objects"] if o["type"] == "exit"]
+
+
+def spawns(room):
+    return [o for o in room["objects"] if o["type"] == "spawn"]
+
+
+def check_links(worlds):
+    """Checks between worlds: unique room names, chapter exits."""
+    problems = []
+    seen = {}
+    for world, rooms in worlds.items():
+        for r in rooms:
+            if r["name"] in seen:
+                problems.append(f"{r['name']} is in both {seen[r['name']]} and {world}")
+            seen.setdefault(r["name"], world)
+    for world, rooms in worlds.items():
+        for r in rooms:
+            for e in exits(r):
+                label = f"{r['name']}: exit at column {int(e['x'] // TILE)}"
+                target_world, target_room, spawn = prop(e, "chapter"), prop(e, "room"), prop(e, "spawn", 0)
+                if target_world not in worlds:
+                    problems.append(f"{label} leads to unknown chapter {target_world!r}")
+                    continue
+                target = next((t for t in worlds[target_world] if t["name"] == target_room), None)
+                if target is None:
+                    problems.append(f"{label} leads to unknown room {target_room!r} in {target_world}")
+                    continue
+                points = spawns(target)
+                if not 0 <= spawn < len(points):
+                    problems.append(f"{label} leads to spawn {spawn} of {target_room}, which has {len(points)}")
+                    continue
+                column = int(points[spawn]["x"] // TILE)
+                if any(int(x["x"] // TILE) == column for x in exits(target)):
+                    problems.append(f"{target_room}: arriving spawn stands on an exit (column {column})")
+    return problems
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "chapter0"))
+    names = sys.argv[1:] or sorted(os.path.basename(p)[:-6] for p in glob.glob(os.path.join(LEVELS, "chapter*.world")))
+    status = 0
+    for name in names:
+        status |= main(name)
+    if len(names) > 1:
+        links = check_links({name: load(name) for name in names})
+        report("links between chapters", [], links)
+        status |= 1 if links else 0
+    sys.exit(status)
