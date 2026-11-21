@@ -9,6 +9,7 @@ import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import type { SaveData } from "../game/save";
+import type { MechEvent, MechSnapshot } from "../game/mechanics";
 import { CHAPTERS, chapterDef } from "../game/chapters";
 import { World, type RoomDef } from "../game/world";
 import { MOMENT_COUNT, MomentScene } from "../game/lumi";
@@ -60,6 +61,8 @@ const UNLOCK_TEXT: Record<string, { title: string; hint: (keys: Record<string, s
 interface Rewinding {
   /** recorded moments, newest first */
   path: PlayerSnapshot[];
+  /** crumble stones and flowers as they were at the oldest recorded step (restored on landing) */
+  mech: MechSnapshot;
   t: number;
 }
 
@@ -118,6 +121,8 @@ export class GameScene implements Scene {
   private readonly pauseMenu: OptionList;
 
   private history: PlayerSnapshot[] = [];
+  /** mechanics state recorded alongside `history`, step for step */
+  private mechHistory: MechSnapshot[] = [];
   private rewinding: Rewinding | null = null;
   private transition: Transition | null = null;
   private rewindCooldown = 0;
@@ -245,7 +250,9 @@ export class GameScene implements Scene {
   private resetRoom(): void {
     this.room.clearEchoes();
     this.level.doorsOpen = false;
+    this.level.mech.reset();
     this.history = [];
+    this.mechHistory = [];
     this.rewinding = null;
     this.rewindCooldown = 0;
   }
@@ -356,9 +363,18 @@ export class GameScene implements Scene {
     if (!p.dead && this.checkExit()) return;
     if (!p.dead) {
       this.history.push(p.snapshot());
-      if (this.history.length > HISTORY) this.history.shift();
+      this.mechHistory.push(this.level.mech.snapshot());
+      if (this.history.length > HISTORY) {
+        this.history.shift();
+        this.mechHistory.shift();
+      }
       this.checkCheckpoints();
       this.checkCollectibles();
+      const flower = this.level.mech.useFlower(p.hitbox, p.canDash);
+      if (flower >= 0) {
+        p.refillDash();
+        this.onFlowerUsed(flower);
+      }
     }
     if (p.dead && !wasDead) {
       this.respawnTimer = RESPAWN_DELAY;
@@ -375,7 +391,9 @@ export class GameScene implements Scene {
       }
     }
 
-    if (this.room.update(dt, p.hitbox)) this.ctx.sfx(this.level.doorsOpen ? "doorOpen" : "doorClose");
+    const roomStep = this.room.update(dt, p.hitbox, p.dead ? 0 : p.wallSide);
+    if (roomStep.doorsChanged) this.ctx.sfx(this.level.doorsOpen ? "doorOpen" : "doorClose");
+    this.onMechEvents(roomStep.events);
     this.fx.update(dt);
     this.shake = Math.max(0, this.shake - dt);
     this.updateCamera(dt);
@@ -492,7 +510,7 @@ export class GameScene implements Scene {
 
   // ------------------------------------------------------------------ rewind
   private startRewind(): void {
-    this.rewinding = { path: [...this.history].reverse(), t: 0 };
+    this.rewinding = { path: [...this.history].reverse(), mech: this.mechHistory[0], t: 0 };
     this.ctx.sfx("rewind");
   }
 
@@ -532,8 +550,12 @@ export class GameScene implements Scene {
       this.fx.burst(now.x + 4, Math.min(now.y, this.level.height - 4) + 6, 10, { colors: [COLORS.c, COLORS.C], speed: 30, life: 0.4 });
     }
 
+    // stones and flowers go back too, but never reform inside Iris (where she lands) or an echo
+    const landing = { x: past.x, y: past.y, w: p.hitbox.w, h: p.hitbox.h };
+    this.level.mech.restoreAfterRewind(rw.mech, [landing, ...this.room.echoes.map((e) => e.hitbox)]);
     p.restore(past);
     this.history = [];
+    this.mechHistory = [];
     this.rewinding = null;
     this.rewindCooldown = REWIND_COOLDOWN;
     this.slotsHud = SLOTS_HUD_TIME;
@@ -839,6 +861,16 @@ export class GameScene implements Scene {
       this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
     }
     if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
+  }
+
+  /** Feedback for crumble stones and regrowing flowers (filled in by the look-and-sound pass). */
+  private onMechEvents(events: MechEvent[]): void {
+    void events;
+  }
+
+  /** Feedback for a flower just used. */
+  private onFlowerUsed(index: number): void {
+    void index;
   }
 
   /**

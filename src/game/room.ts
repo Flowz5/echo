@@ -1,4 +1,5 @@
 import { Echo } from "./echo";
+import type { MechEvent } from "./mechanics";
 import { overlaps, type Field, type Level, type Rect } from "./level";
 
 /** What the player collides with: the level's tiles plus the solid echoes. */
@@ -10,6 +11,16 @@ export interface Collider {
   hazardAt(r: Rect): boolean;
   /** Drift and vents where a rect is */
   fieldAt(r: Rect): Field;
+}
+
+/**
+ * What makes a crumble stone shake: a 1-px strip just under the feet, plus one against
+ * the wall a body is sliding down (wallSide -1 left, 1 right).
+ */
+export function touchStrips(body: Rect, wallSide: -1 | 0 | 1): Rect[] {
+  const strips = [{ x: body.x, y: body.y + body.h, w: body.w, h: 1 }];
+  if (wallSide !== 0) strips.push({ x: wallSide > 0 ? body.x + body.w : body.x - 1, y: body.y, w: 1, h: body.h });
+  return strips;
 }
 
 /** A playable room: its level, the echoes left in it, plates and doors. */
@@ -58,10 +69,10 @@ export class Room implements Collider {
   }
 
   /**
-   * Arms echoes Iris no longer overlaps, presses plates and opens doors.
-   * @returns true when the doors changed state this step
+   * Arms echoes Iris no longer overlaps, presses plates, opens doors, runs crumble stones
+   * and flowers (echoes trigger stones too; Iris also by wall-sliding against them).
    */
-  update(dt: number, player: Rect): boolean {
+  update(dt: number, player: Rect, wallSide: -1 | 0 | 1 = 0): { doorsChanged: boolean; events: MechEvent[] } {
     for (const e of this.echoes) {
       e.update(dt);
       if (!e.armed && !overlaps(e.hitbox, player)) e.armed = true;
@@ -74,6 +85,8 @@ export class Room implements Collider {
     const open = lv.platesPressed.some(Boolean) || (lv.doorsOpen && blocked);
     const changed = open !== lv.doorsOpen;
     lv.doorsOpen = open;
-    return changed;
+    const touches = [...touchStrips(player, wallSide), ...this.echoes.filter((e) => e.armed).flatMap((e) => touchStrips(e.hitbox, 0))];
+    const events = lv.mech.update(dt, touches, bodies);
+    return { doorsChanged: changed, events };
   }
 }
