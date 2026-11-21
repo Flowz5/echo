@@ -23,6 +23,8 @@ export interface SaveData {
   talked: string[];
   /** room names entered at least once (for the map) */
   visited: string[];
+  /** chapters whose whole map Quill revealed (room outlines) */
+  revealed?: string[];
   /** seconds of actual play */
   playTime: number;
   /** Date.now() of the save */

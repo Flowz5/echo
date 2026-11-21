@@ -24,6 +24,12 @@ describe("interact key", () => {
     expect(s.bindings.jump).toBe("KeyK");
   });
 
+  it("the map key defaults to C, also for old saved settings", () => {
+    expect(DEFAULT_SETTINGS.bindings.map).toBe("KeyC");
+    fakeStorage({ "echo.settings.v1": JSON.stringify({ bindings: { jump: "KeyK" } }) });
+    expect(loadSettings().bindings.map).toBe("KeyC");
+  });
+
   it("rebinding it onto another action's key swaps them", () => {
     const s = structuredClone(DEFAULT_SETTINGS);
     rebind(s, "interact", "KeyR");

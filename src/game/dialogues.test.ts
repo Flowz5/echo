@@ -20,6 +20,8 @@ describe("chapter 0 scripts", () => {
     const map = choice!.choices![1].reply;
     expect(map.at(-1)?.speaker.voice).toBe("system");
     expect(map.at(-1)?.text).toBe("MAP UPDATED.");
+    expect(choice!.choices![1].effect).toBe("revealMap");
+    expect(choice!.choices![0].effect).toBeUndefined();
     expect(quillRepeat().length).toBe(1);
   });
 
