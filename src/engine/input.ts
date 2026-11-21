@@ -1,7 +1,7 @@
 import { manifest } from "../config";
 import type { Renderer } from "./renderer";
 
-export type Bindable = "up" | "down" | "left" | "right" | "jump" | "dash" | "rewind" | "pause";
+export type Bindable = "up" | "down" | "left" | "right" | "jump" | "dash" | "rewind" | "interact" | "pause";
 export type Action = Bindable | "confirm" | "back";
 export type Bindings = Record<Bindable, string>;
 
@@ -17,6 +17,7 @@ export const DEFAULT_BINDINGS: Bindings = {
   jump: "Space",
   dash: "ShiftLeft",
   rewind: "KeyR",
+  interact: "KeyE",
   pause: "Escape",
 };
 

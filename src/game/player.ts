@@ -199,6 +199,11 @@ export class Player {
     return { x: this.x, y: this.y, w: HB_W, h: HB_H };
   }
 
+  /** Forgets a buffered jump (e.g. the key that closed a dialogue). */
+  cancelJumpBuffer(): void {
+    this.buffer = 0;
+  }
+
   /** Gives the dash and double jump back (checkpoints, refills). */
   refill(): void {
     if (!this.canDash) this.fx.burst(this.x + HB_W / 2, this.y + 4, 6, { colors: [COLORS.P, COLORS.q], speed: 35, life: 0.3 });

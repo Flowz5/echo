@@ -1,6 +1,7 @@
 import { MusicPlayer } from "../audio/music";
 import { Synth, noteFreq } from "../audio/synth";
 import { TRACKS, type TrackName } from "../audio/tracks";
+import type { Voice } from "../game/dialogue";
 
 export type SfxName =
   | "move"
@@ -97,6 +98,32 @@ export class AudioEngine {
   setDucked(ducked: boolean): void {
     this.ducked = ducked;
     this.applyVolumes();
+  }
+
+  /** One dialogue voice blip (a typed letter), with a little random pitch so it doesn't sound robotic. */
+  blip(voice: Voice): void {
+    const s = this.synth;
+    const out = this.sfxBus;
+    if (!s || !out || !this.ac || this.sfxVolume <= 0) return;
+    const t = this.ac.currentTime + 0.005;
+    const wobble = (semis: number) => Math.pow(2, (Math.round((Math.random() * 2 - 1) * semis)) / 12);
+    switch (voice) {
+      case "tamsin": // low and warm
+        s.tone(out, { freq: noteFreq("D4") * wobble(1), t, dur: 0.05, wave: "triangle", gain: 0.16, release: 0.03 });
+        break;
+      case "quill": // high and nervous
+        s.tone(out, { freq: noteFreq("A5") * wobble(2), t, dur: 0.035, wave: "pulse12", gain: 0.1, release: 0.02 });
+        break;
+      case "system": // neutral beep
+        s.tone(out, { freq: noteFreq("E5"), t, dur: 0.04, wave: "pulse25", gain: 0.1 });
+        break;
+      case "lingering": { // faint, with an echo
+        const f = noteFreq("C5") * wobble(1);
+        s.tone(out, { freq: f, t, dur: 0.06, wave: "sine", gain: 0.1 });
+        s.tone(out, { freq: f, t: t + 0.09, dur: 0.06, wave: "sine", gain: 0.04 });
+        break;
+      }
+    }
   }
 
   sfx(name: SfxName): void {

@@ -1,4 +1,6 @@
 import { C, COLORS, HEIGHT, STEP, WIDTH, manifest } from "../config";
+import { Conversation } from "../game/dialogue";
+import { NPC_DIALOGUES, lingeringLine } from "../game/dialogues";
 import { Echo } from "../game/echo";
 import { Level, overlaps, type Entity, type Point } from "../game/level";
 import { Progress, type Ability, type CollectibleKind } from "../game/progress";
@@ -7,6 +9,7 @@ import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import { World, type RoomDef } from "../game/world";
+import { drawDialogueBox } from "../ui/dialogue-box";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
@@ -80,6 +83,10 @@ export class GameScene implements Scene {
   private shake = 0;
   private respawnTimer = 0;
   private paused = false;
+  /** the conversation on screen, if any (Iris waits while it is open) */
+  private conversation: Conversation | null = null;
+  /** NPCs already talked to this run: they say their short repeat line next time */
+  private readonly talked = new Set<string>();
   private debug = false;
   private t = 0;
   private roomNameTimer = 0;
@@ -127,6 +134,8 @@ export class GameScene implements Scene {
   private startRun(): void {
     for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
     this.lastCheckpoint.clear();
+    this.talked.clear();
+    this.conversation = null;
     this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
     this.banner = this.popup = null;
     this.setRoom(this.world.startRoom);
@@ -181,6 +190,10 @@ export class GameScene implements Scene {
       this.pauseMenu.update();
       return;
     }
+    if (this.conversation) {
+      this.updateConversation(dt);
+      return;
+    }
     if (input.justPressed("pause")) {
       this.ctx.sfx("pause");
       this.setPaused(true);
@@ -214,6 +227,12 @@ export class GameScene implements Scene {
         return;
       }
       this.ctx.sfx("rewindFail");
+    }
+
+    const target = this.talkTarget();
+    if (target && input.justPressed("interact")) {
+      this.openConversation(target);
+      return;
     }
 
     const wasDead = p.dead;
@@ -486,6 +505,7 @@ export class GameScene implements Scene {
     this.renderPopup();
     this.renderBanner();
     if (this.debug) this.renderDebug(camX, camY);
+    if (this.conversation) drawDialogueBox(draw, this.conversation, this.t);
 
     if (this.paused) {
       draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.6);
@@ -511,6 +531,54 @@ export class GameScene implements Scene {
     draw.frame(draw.img.player, s.frame, s.x - 4 - camX, s.y - 4 - camY, { flip: s.facing < 0, row: 2 });
   }
 
+  // ------------------------------------------------------------------ dialogues
+  /** The NPC or Lingering villager Iris can talk to right now. */
+  private talkTarget(): Entity | null {
+    const p = this.player;
+    if (p.dead || !p.grounded || this.conversation) return null;
+    let best: Entity | null = null;
+    let bestD = TALK_RANGE;
+    for (const e of this.level.entities) {
+      if (e.kind !== "npc" && e.kind !== "lingering") continue;
+      const d = Math.hypot(p.x + 4 - e.x, p.y + 6 - (e.y - 12));
+      if (d < bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  private openConversation(e: Entity): void {
+    let lines;
+    if (e.kind === "lingering") {
+      lines = lingeringLine(String(e.props.text ?? "..."));
+    } else {
+      const script = NPC_DIALOGUES[String(e.props.name ?? "")];
+      if (!script) return;
+      lines = this.talked.has(e.key) ? script.repeat() : script.first();
+      this.talked.add(e.key);
+    }
+    this.conversation = new Conversation(lines);
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("select");
+  }
+
+  private updateConversation(dt: number): void {
+    const { input } = this.ctx;
+    const conv = this.conversation!;
+    if (input.justPressed("pause")) conv.skip();
+    else if (input.justPressed("jump") || input.justPressed("interact")) conv.confirm();
+    else if (input.justPressed("up")) conv.move(-1);
+    else if (input.justPressed("down")) conv.move(1);
+    if (conv.update(dt).blip) this.ctx.audio.blip(conv.line.speaker.voice);
+    if (conv.done) {
+      this.conversation = null;
+      this.ctx.audio.setDucked(false);
+      this.player.cancelJumpBuffer();
+    }
+  }
+
   private renderEntities(camX: number, camY: number): void {
     const { draw } = this.ctx;
     const p = this.player;
@@ -533,13 +601,13 @@ export class GameScene implements Scene {
         // a villager frozen in the Stilling: a faint echo with a thought
         const shimmer = 0.4 + 0.1 * Math.sin(this.t * 2 + e.x);
         draw.frame(draw.img.npc, 0, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, alpha: shimmer, flip: e.props.flip === true });
-        if (near(e.x, e.y - 12)) this.label(String(e.props.text ?? "..."), e.x - camX, e.y - 34 - camY, C.echoLight);
+        if (near(e.x, e.y - 12) && !this.conversation) this.label(`(${keys.interact})`, e.x - camX, e.y - 34 - camY, C.echoLight);
         continue;
       }
       if (e.kind === "npc") {
         const blink = Math.floor(this.t * 2 + e.x) % 7 === 0 ? 1 : 0;
         draw.frame(draw.img.npc, blink, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, flip: p.x + 4 < e.x });
-        if (near(e.x, e.y - 12)) this.label(String(e.props.name ?? "???"), e.x - camX, e.y - 34 - camY, C.bone);
+        if (near(e.x, e.y - 12) && !this.conversation) this.label(`${String(e.props.name ?? "???")} (${keys.interact})`, e.x - camX, e.y - 34 - camY, C.bone);
         continue;
       }
       if (this.progress.taken(e.key)) continue;

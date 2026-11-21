@@ -232,12 +232,13 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 | Bell chime | amber + cyan | Hitting it makes every echo intangible for 3 s | 4 |
 | Stillwarden's seal | violet | Wall that only opens when every echo slot is in use | 4 |
 
-### 4.6 Dialogue system
-- Walk up to an NPC: a small **"UP"** key prompt (the player's actual up key) floats above them.
-- Press up: the **dialogue box** opens at the bottom of the screen (panel, 32×32 portrait on the left, name in the NPC's colour, text typing at 40 characters per second with the voice blip).
-- **Jump** = show the full line, then next line. **Pause** = skip the conversation.
+### 4.6 Dialogue system ✅ (Tamsin, Quill and the Lingering villagers in chapter 0)
+- Walk up to an NPC: their name and the player's actual **INTERACT** key (default **E**, rebindable) float above them. The Lingering villagers show just the key and say their one line in the box.
+- Press INTERACT: the **dialogue box** opens at the bottom of the screen (panel, 32×32 portrait on the left, name in the NPC's colour, text typing at 40 characters per second, a short pause after commas and a longer one after full stops). Iris waits and the music ducks.
+- **Voices:** a synth blip every second letter, with a little random pitch. Tamsin: low, warm triangle. Quill: high, fussy thin pulse. System lines: a neutral beep. Lingering: a faint sine with an echo.
+- **Jump** or **Interact** = show the full line, then next line. **Pause** = skip the conversation.
 - Some lines offer **choices** (up/down + jump). Choices never lock content. They change a reply or a later line.
-- NPCs have a **first talk**, **repeat talk** (short) and **after-chapter** lines.
+- NPCs have a **first talk**, **repeat talk** (short) and **after-chapter** lines. For now the first talk is remembered for the current run only (no save system yet). Quill's repeat line: "THE MILL'S ON THE MAP NOW. THE MILL IS ALWAYS ON THE MAP."
 - Gameplay never pauses for dialogue outside of NPC talks. Story beats inside rooms use **floating text** above characters so the action keeps flowing.
 
 ### 4.7 Hint system (Pip)
@@ -904,6 +905,7 @@ CONTROLS
   JUMP                         SPACE
   DASH                         L-SHIFT
   REWIND                       R
+  INTERACT                     E (talk to people, later other things)
   PAUSE                        ESC
   RESET TO DEFAULT
   BACK
