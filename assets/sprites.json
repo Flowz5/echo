@@ -414,6 +414,18 @@
       "quill"
     ]
   },
+  "lumi": {
+    "file": "sprites/lumi.png",
+    "frame": [
+      16,
+      24
+    ],
+    "order": [
+      "kite_a",
+      "kite_b"
+    ],
+    "_note": "Lumi as an echo, in the echo cyans"
+  },
   "ui": {
     "file": "ui/ui.png",
     "rects": {

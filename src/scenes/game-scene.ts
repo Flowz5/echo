@@ -10,6 +10,7 @@ import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import type { SaveData } from "../game/save";
 import { World, type RoomDef } from "../game/world";
+import { MOMENT_COUNT, MomentScene } from "../game/lumi";
 import { travelTargets, shrineKey, type ShrineSpot } from "../game/map";
 import { drawDialogueBox } from "../ui/dialogue-box";
 import { MapScreen } from "../ui/map-screen";
@@ -98,6 +99,8 @@ export class GameScene implements Scene {
   private readonly revealed = new Set<string>();
   private readonly map: MapScreen;
   private mapOpen = false;
+  /** a Lumi's Moment playing (Iris waits) */
+  private moment: { scene: MomentScene; x: number; y: number } | null = null;
   /** fast travel in progress: fading out, then in at the destination */
   private fastTravel: { t: number; target: ShrineSpot; arrived: boolean } | null = null;
   /** seconds of actual play on this save */
@@ -156,6 +159,7 @@ export class GameScene implements Scene {
     this.revealed.clear();
     this.mapOpen = false;
     this.fastTravel = null;
+    this.moment = null;
     this.conversation = null;
     this.banner = this.popup = null;
     this.playTime = save?.playTime ?? 0;
@@ -252,6 +256,10 @@ export class GameScene implements Scene {
     this.playTime += dt;
     if (this.fastTravel) {
       this.updateFastTravel(dt);
+      return;
+    }
+    if (this.moment) {
+      this.updateMoment(dt);
       return;
     }
     if (this.mapOpen) {
@@ -420,6 +428,9 @@ export class GameScene implements Scene {
       if (e.kind === "shard") {
         this.progress.secure(e.key, e.kind); // story items are kept at once
         this.unlock(String(e.props.unlocks ?? ""));
+      } else if (e.kind === "moment") {
+        this.progress.secure(e.key, e.kind); // a memory, kept at once
+        this.startMoment(e);
       } else {
         this.progress.pending.push({ key: e.key, kind: e.kind });
         this.ctx.sfx("echoAppear");
@@ -585,6 +596,7 @@ export class GameScene implements Scene {
     this.renderPopup();
     this.renderBanner();
     if (this.debug) this.renderDebug(camX, camY);
+    this.renderMoment(camX, camY);
     if (this.conversation) drawDialogueBox(draw, this.conversation, this.t);
     if (this.mapOpen) this.map.render(this.t);
     if (this.fastTravel) {
@@ -666,6 +678,60 @@ export class GameScene implements Scene {
       this.ctx.audio.setDucked(false);
       this.player.cancelJumpBuffer();
     }
+  }
+
+  // ------------------------------------------------------------------ Lumi's moments
+  private startMoment(e: Entity): void {
+    // Lumi appears a step away from Iris, not on top of her
+    const side = this.player.x + 4 < e.x ? 1 : -1;
+    this.moment = { scene: new MomentScene(Number(e.props.index ?? 1)), x: e.x + side * 12, y: e.y };
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("echoAppear");
+    this.fx.burst(e.x, e.y - 14, 24, { colors: [COLORS.e, COLORS.E, COLORS.C], speed: 40, life: 1, gravity: -20 });
+  }
+
+  private updateMoment(dt: number): void {
+    const { input } = this.ctx;
+    const m = this.moment!;
+    if (input.justPressed("jump") || input.justPressed("interact")) m.scene.skip();
+    if (m.scene.update(dt).blip) this.ctx.audio.blip("lingering");
+    this.fx.update(dt);
+    if (Math.random() < dt * 6 * m.scene.alpha) {
+      this.fx.burst(m.x + (Math.random() - 0.5) * 20, m.y - 10 - Math.random() * 30, 1, { colors: [COLORS.e, COLORS.E], speed: 8, life: 1.2, gravity: -10 });
+    }
+    if (m.scene.done) {
+      this.moment = null;
+      this.ctx.audio.setDucked(false);
+      this.player.cancelJumpBuffer();
+      this.popup = { kind: "moment", t: POPUP_TIME };
+      this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+    }
+  }
+
+  /** Lumi as an echo, her kite on its string, and her line. */
+  private renderMoment(camX: number, camY: number): void {
+    const m = this.moment;
+    if (!m) return;
+    const { draw } = this.ctx;
+    const a = m.scene.alpha;
+    draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.35 * a);
+    const x = Math.round(m.x - camX);
+    const y = Math.round(m.y - camY);
+    const sway = Math.sin(this.t * 1.6);
+    const kx = x + 18 + Math.round(sway * 3);
+    const ky = y - 52 + Math.round(Math.cos(this.t * 1.3) * 2);
+    draw.ctx.globalAlpha = a * 0.6;
+    draw.ctx.strokeStyle = COLORS.e;
+    draw.ctx.beginPath();
+    draw.ctx.moveTo(x + 3.5, y - 19.5);
+    draw.ctx.quadraticCurveTo(x + 14, y - 28, kx + 0.5, ky + 12.5);
+    draw.ctx.stroke();
+    draw.ctx.globalAlpha = a * 0.75;
+    draw.frame(draw.img.lumi, Math.floor(this.t * 3) % 2, x - 8, y - 24, { fh: 24 });
+    draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME.moment, kx - 8, ky - 4);
+    draw.ctx.globalAlpha = a;
+    if (m.scene.shown) this.label(m.scene.shown, x, y - 66, C.echoLight);
+    draw.ctx.globalAlpha = 1;
   }
 
   // ------------------------------------------------------------------ map & fast travel
@@ -864,10 +930,12 @@ export class GameScene implements Scene {
     const { draw } = this.ctx;
     const { kind, t } = this.popup;
     const slide = Math.min(1, (POPUP_TIME - t) * 6, t * 3);
-    const x = WIDTH - 4 - Math.round(slide * 100);
+    const count = kind === "moment" ? `${this.progress.count(kind)}/${MOMENT_COUNT}` : `${this.progress.count(kind)}`;
+    const text = `${COLLECTIBLE_NAME[kind]} ${count}`;
+    const x = WIDTH - 4 - Math.round(slide * (18 + draw.textWidth(text) + 4));
     draw.ctx.globalAlpha = slide;
     draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[kind], x, 4);
-    draw.text(`${COLLECTIBLE_NAME[kind]} ${this.progress.count(kind)}`, x + 18, 9, C.bone);
+    draw.text(text, x + 18, 9, C.bone);
     draw.ctx.globalAlpha = 1;
   }
 
