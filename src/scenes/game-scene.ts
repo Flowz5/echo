@@ -12,7 +12,7 @@ import type { SaveData } from "../game/save";
 import { CHAPTERS, chapterDef } from "../game/chapters";
 import { World, type RoomDef } from "../game/world";
 import { MOMENT_COUNT, MomentScene } from "../game/lumi";
-import { travelTargets, shrineKey, type ShrineSpot } from "../game/map";
+import { travelTargets, shrineKey, visitedChapters, type ShrineSpot } from "../game/map";
 import { drawDialogueBox } from "../ui/dialogue-box";
 import { MapScreen } from "../ui/map-screen";
 import { OptionList } from "../ui/option-list";
@@ -128,7 +128,7 @@ export class GameScene implements Scene {
     this.room = new Room(this.current.level, this.current.maxEchoes);
     this.respawnPoint = this.current.level.spawn;
     this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name), (a) => this.progress.has(a));
-    this.map = new MapScreen(ctx.draw, this.world.rooms, chapterDef(this.world.id)?.title ?? this.world.id.toUpperCase());
+    this.map = new MapScreen(ctx.draw);
     this.pauseMenu = new OptionList(
       ctx,
       [
@@ -793,9 +793,15 @@ export class GameScene implements Scene {
     const here = this.shrineHere();
     const targets = here ? travelTargets(this.shrines(), lit, here) : [];
     const keys = this.keyLabels();
+    const roomChapter = new Map(this.allRooms().map((r) => [r.name, r.chapter]));
+    const chapters = visitedChapters(this.visited, (name) => roomChapter.get(name) ?? null).map((id) => {
+      const def = chapterDef(id);
+      return { id, number: def?.number ?? 0, title: def?.title ?? id.toUpperCase(), rooms: this.worlds.get(id)!.rooms, revealed: this.revealed.has(id) };
+    });
     this.map.open({
+      chapters,
+      current: this.world.id,
       visited: this.visited,
-      revealed: this.revealed.has(this.world.id),
       lit,
       player: { x: this.current.x + this.player.x + 4, y: this.current.y + this.player.y + 12 },
       currentRoom: this.current.name,
