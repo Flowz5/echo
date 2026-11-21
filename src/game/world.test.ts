@@ -11,7 +11,7 @@ describe("world", () => {
 
   it("parses the Overlook exit as a full-height strip", () => {
     const exit = new World("chapter0").room("overlook")!.level.exits[0];
-    expect(exit).toEqual({ x: 22 * 16, y: 0, w: 16, h: 16 * 16, chapter: "chapter1", room: "gorge_gate", spawn: 0 });
+    expect(exit).toEqual({ x: 23 * 16, y: 0, w: 16, h: 16 * 16, chapter: "chapter1", room: "gorge_gate", spawn: 0 });
   });
 
   it("the return exit points at the Overlook's second spawn", () => {

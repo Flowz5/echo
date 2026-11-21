@@ -541,19 +541,20 @@ r.hang("hanging_lantern", 82, 9)
 rooms.append(r)
 
 # ================================================================ 0-15 The Overlook
-# The end of the Quiet Vale: a Bell Shrine, and the way on to chapter 1 at the right wall.
+# The end of the Quiet Vale: a Bell Shrine, and an archway in the right wall leading on to chapter 1.
 r = Room("overlook", "The Overlook", 24, 16, (704, -11))
 r.ground(0, 23, 15)
 r.fill(0, 0, 0, 10)
-r.fill(23, 0, 23, 14)
+r.fill(23, 0, 23, 11)                  # the right wall, with an archway at its foot (rows 12-14)
 r.put(1, 14, "S")
 r.put(21, 14, "S")                     # spawn 1: arriving back from chapter 1
 r.put(14, 14, "H")
-r.exit(22, 14, "chapter1", "gorge_gate")  # in front of the right wall
+r.exit(23, 14, "chapter1", "gorge_gate")  # through the archway
 r.deco("ruin_pillar", 4, 15, "back")
 r.deco("pine", 20, 15, "back")
 r.deco("lantern_post", 10, 15)
-r.deco("sign", 18, 15)
+r.deco("sign_arrow", 19, 15)
+r.hang("hanging_lantern", 23, 11)      # lights the archway
 r.deco("bush", 7, 15)
 r.deco("rock_l", 21, 15)
 r.deco("flower_lilac", 12, 15)
