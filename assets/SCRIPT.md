@@ -382,12 +382,12 @@ Iris wakes up in Lanternrest on her "birthday", the day Tamsin decided she is ol
 | 0-6 | The Old Bridge | A broken bridge over the void: double-jump chains between the arches. Crystal on the second arch, a Lost Page up high |
 | 0-7 | The Broken Mill | Planks up to **Quill**, drop-through, the **wall-jump chimney**, then upstairs a spiky floor crossed on planks |
 | 0-8 | Mill Roof | Chimney stacks over spikes; wall-jump up the tall pair (Lost Page on top) |
-| 0-9 | Lumi's Field | The hill and **Lumi's Moment 1**, a gap over the void. Dash gate: a floating island (Lost Page) |
+| 0-9 | Lumi's Field | The hill and **Lumi's Moment 1**, a gap over the void. Dash gate: a floating island high over the gap, seen from the hilltop (Lost Page): a dash jump + double jump from the hilltop reaches it, no double jump or wall kick can |
 | 0-10 | Spike Hollow | A long way down: spike pits, planks over a spike floor, three crystals. Rewind gate: a hanging plate opens a hidden alcove (Lost Page) |
 | 0-11 | The Vale Shrine | Bell Shrine. The road forks: up = Orchard Way, down through the floor = the Millrace |
 | 0-11a | Orchard Way | Platforming route: treetop planks over thorns, a crystal on a trunk halfway, a high plank with a Lost Page |
 | 0-11b | The Millrace | Puzzle route: drop-through stack, crawl under, climb, cross over, then a spiky channel on planks. Two Lost Pages |
-| 0-12 | Shard of Motion | Both routes meet above a pit too wide to cross: grab the **Shard of Motion** mid-jump, it unlocks the **dash**, dash across |
+| 0-12 | Shard of Motion | Both routes meet at a pit under a ruined arch (a 4-tile-high tunnel, lips over the void on both sides): it can't be crossed or flown over without the dash, so the only way on is to grab the **Shard of Motion** mid-jump, it unlocks the **dash**, then dash + double jump across |
 | 0-13 | The Rise | The dash tutorial: dash across an 8-tile gap, dash up a 6-tile ledge, dash + double jump over the void, then on to the Thorn Steps |
 | 0-14 | The Thorn Steps | **The chapter's exam** (firm but fair, a crystal before every beat), floating slabs, stones and short walls over a thorn pit: (1) the **dash jump** + double jump over 8 tiles under an arch; (2) dash jump into a chimney, wall-jump up, dash out 8 tiles from the top; (3) drop to a rest, then dash jump + double jump up onto a two-tile stone (8) and up again to a slab (7); (4) the same onto a second stone (8), then up to the exit ledge (5 out, 2 up). Every beat checked with natural inputs at several timings; experts may find lines without the dash
 | 0-14a | The Thorn Spire ★ | Optional, **really demanding**: up through the hole above the chimney. One crystal at the door, then walls, a slab and a lone stone with no ground, every jump needing the dash. A Lost Page at the far end, then drop back onto the Steps' exit ledge |
