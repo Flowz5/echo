@@ -83,6 +83,7 @@ const FIRST_STEPS: TrackDef = {
 export const TRACKS = {
   menu: STARLIT_VALE,
   vale: FIRST_STEPS,
+  ruins: FIRST_STEPS, // placeholder until Broken Bridges is composed
 } satisfies Record<string, TrackDef>;
 
 export type TrackName = keyof typeof TRACKS;

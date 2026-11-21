@@ -12,7 +12,8 @@ function memory() {
 }
 
 const sample = (room = "the_rise"): SaveData => ({
-  version: 1,
+  version: 2,
+  chapter: "chapter0",
   room,
   point: { x: 40, y: 208 },
   abilities: ["doubleJump", "wallJump", "dash"],
@@ -34,13 +35,26 @@ describe("save store", () => {
     expect(s.load(1)).toBeNull();
   });
 
-  it("treats broken or old saves as empty", () => {
+  it("loads a v1 save as chapter 0", () => {
+    const m = memory();
+    const { chapter: _chapter, ...v1 } = sample();
+    m.data["echo.save.v1.slot1"] = JSON.stringify({ ...v1, version: 1 });
+    expect(new SaveStore(m).load(1)).toEqual({ ...sample(), version: 2, chapter: "chapter0" });
+  });
+
+  it("treats broken or unknown-version saves as empty", () => {
     const m = memory();
     m.data["echo.save.v1.slot1"] = "{not json";
-    m.data["echo.save.v1.slot2"] = JSON.stringify({ ...sample(), version: 2 });
+    m.data["echo.save.v1.slot2"] = JSON.stringify({ ...sample(), version: 3 });
     const s = new SaveStore(m);
     expect(s.load(1)).toBeNull();
     expect(s.load(2)).toBeNull();
+  });
+
+  it("keeps an unknown chapter as written (the scene falls back)", () => {
+    const s = new SaveStore(memory());
+    s.write(1, { ...sample(), chapter: "chapter9" });
+    expect(s.load(1)?.chapter).toBe("chapter9");
   });
 
   it("remembers the last slot written, forgets it when erased", () => {
