@@ -1,4 +1,6 @@
 import { C, COLORS, HEIGHT, STEP, WIDTH, manifest } from "../config";
+import { Conversation } from "../game/dialogue";
+import { NPC_DIALOGUES, lingeringLine } from "../game/dialogues";
 import { Echo } from "../game/echo";
 import { Level, overlaps, type Entity, type Point } from "../game/level";
 import { Progress, type Ability, type CollectibleKind } from "../game/progress";
@@ -6,12 +8,19 @@ import { keyName } from "../engine/input";
 import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
+import type { SaveData } from "../game/save";
 import { World, type RoomDef } from "../game/world";
+import { MOMENT_COUNT, MomentScene } from "../game/lumi";
+import { travelTargets, shrineKey, type ShrineSpot } from "../game/map";
+import { drawDialogueBox } from "../ui/dialogue-box";
+import { MapScreen } from "../ui/map-screen";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
 /** chapter to load: chapter0 by default, or ?world=playground for the movement test rooms */
 const WORLD = new URLSearchParams(location.search).get("world") ?? "chapter0";
+const CHAPTER_TITLES: Record<string, string> = { chapter0: "THE QUIET VALE" };
+const TRAVEL_FADE = 0.35; // s, each way
 const RESPAWN_DELAY = 0.5;
 const CAMERA_LERP_X = 7; // higher = snappier
 const CAMERA_LERP_Y = 4.5;
@@ -80,6 +89,22 @@ export class GameScene implements Scene {
   private shake = 0;
   private respawnTimer = 0;
   private paused = false;
+  /** the conversation on screen, if any (Iris waits while it is open) */
+  private conversation: Conversation | null = null;
+  /** NPCs already talked to this run: they say their short repeat line next time */
+  private readonly talked = new Set<string>();
+  /** rooms entered at least once this save (for the map) */
+  private readonly visited = new Set<string>();
+  /** chapters whose whole map Quill revealed */
+  private readonly revealed = new Set<string>();
+  private readonly map: MapScreen;
+  private mapOpen = false;
+  /** a Lumi's Moment playing (Iris waits) */
+  private moment: { scene: MomentScene; x: number; y: number } | null = null;
+  /** fast travel in progress: fading out, then in at the destination */
+  private fastTravel: { t: number; target: ShrineSpot; arrived: boolean } | null = null;
+  /** seconds of actual play on this save */
+  private playTime = 0;
   private debug = false;
   private t = 0;
   private roomNameTimer = 0;
@@ -96,10 +121,12 @@ export class GameScene implements Scene {
     this.room = new Room(this.current.level, this.current.maxEchoes);
     this.respawnPoint = this.current.level.spawn;
     this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name), (a) => this.progress.has(a));
+    this.map = new MapScreen(ctx.draw, this.world.rooms, CHAPTER_TITLES[WORLD] ?? WORLD.toUpperCase());
     this.pauseMenu = new OptionList(
       ctx,
       [
         { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
+        { kind: "action", label: "MAP", run: () => this.openMap() },
         { kind: "action", label: "RESTART ROOM", run: () => this.restartRoom() },
         { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
         { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
@@ -115,7 +142,7 @@ export class GameScene implements Scene {
   enter(from: ScreenName | null): void {
     if (from === "settings") return; // back from the pause menu's settings: keep the run
     this.ctx.audio.playMusic("vale");
-    this.startRun();
+    this.startRun(this.ctx.session.data);
   }
 
   private setPaused(paused: boolean): void {
@@ -123,15 +150,59 @@ export class GameScene implements Scene {
     this.ctx.audio.setDucked(paused);
   }
 
-  /** A fresh run from the first room: checkpoints forgotten. */
-  private startRun(): void {
+  /** A run from a save (or a new game from the first room when there is none). */
+  private startRun(save: SaveData | null = null): void {
     for (const r of this.world.rooms) for (const c of r.level.checkpoints) c.active = false;
     this.lastCheckpoint.clear();
-    this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
+    this.talked.clear();
+    this.visited.clear();
+    this.revealed.clear();
+    this.mapOpen = false;
+    this.fastTravel = null;
+    this.moment = null;
+    this.conversation = null;
     this.banner = this.popup = null;
-    this.setRoom(this.world.startRoom);
-    this.respawnPoint = this.level.spawn;
+    this.playTime = save?.playTime ?? 0;
+    if (!save) {
+      this.progress.reset(this.world.startAbilities, this.world.startEchoSlots);
+      this.setRoom(this.world.startRoom);
+      this.respawnPoint = this.level.spawn;
+      this.restartRoom();
+      return;
+    }
+    this.progress.restore(save.abilities, save.echoSlots, save.secured);
+    const lit = new Set(save.lit);
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => (c.active = lit.has(`${r.name}:${i}`)));
+    for (const [room, point] of Object.entries(save.lastCheckpoint)) this.lastCheckpoint.set(room, point);
+    for (const key of save.talked) this.talked.add(key);
+    for (const name of save.visited) this.visited.add(name);
+    for (const chapter of save.revealed ?? []) this.revealed.add(chapter);
+    const room = this.world.rooms.find((r) => r.name === save.room);
+    this.setRoom(room ?? this.world.startRoom); // a room removed since the save: back to the start
+    this.respawnPoint = room ? save.point : this.level.spawn;
     this.restartRoom();
+  }
+
+  /** Everything needed to resume later, at the current respawn point. */
+  private buildSave(): SaveData {
+    const lit: string[] = [];
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.push(`${r.name}:${i}`));
+    return {
+      version: 1,
+      room: this.current.name,
+      roomTitle: this.current.title,
+      point: { ...this.respawnPoint },
+      abilities: [...this.progress.abilities],
+      echoSlots: this.progress.echoSlots,
+      secured: this.progress.securedEntries(),
+      lit,
+      lastCheckpoint: Object.fromEntries(this.lastCheckpoint),
+      talked: [...this.talked],
+      visited: [...this.visited],
+      revealed: [...this.revealed],
+      playTime: Math.round(this.playTime),
+      savedAt: Date.now(),
+    };
   }
 
   /** Back to the respawn point of the current room, room state reset. */
@@ -161,6 +232,7 @@ export class GameScene implements Scene {
 
   private setRoom(def: RoomDef): void {
     this.current = def;
+    this.visited.add(def.name);
     this.room = new Room(def.level, this.echoLimit(def));
     this.player.setCollider(this.room);
     this.resetRoom();
@@ -179,6 +251,25 @@ export class GameScene implements Scene {
         return;
       }
       this.pauseMenu.update();
+      return;
+    }
+    this.playTime += dt;
+    if (this.fastTravel) {
+      this.updateFastTravel(dt);
+      return;
+    }
+    if (this.moment) {
+      this.updateMoment(dt);
+      return;
+    }
+    if (this.mapOpen) {
+      const r = this.map.update(dt, input);
+      if (r && "travel" in r) this.startFastTravel(r.travel);
+      else if (r) this.closeMap();
+      return;
+    }
+    if (this.conversation) {
+      this.updateConversation(dt);
       return;
     }
     if (input.justPressed("pause")) {
@@ -214,6 +305,16 @@ export class GameScene implements Scene {
         return;
       }
       this.ctx.sfx("rewindFail");
+    }
+
+    const target = this.talkTarget();
+    if (target && input.justPressed("interact")) {
+      this.openConversation(target);
+      return;
+    }
+    if (input.justPressed("map") && !p.dead) {
+      this.openMap();
+      return;
     }
 
     const wasDead = p.dead;
@@ -296,12 +397,18 @@ export class GameScene implements Scene {
     for (const c of this.level.checkpoints) {
       if (!overlaps(p.hitbox, Level.checkpointRect(c))) continue;
       p.refill();
+      const hadPending = this.progress.pending.length > 0;
       this.securePending();
       const point = { x: c.x, y: c.y };
+      const before = this.lastCheckpoint.get(this.current.name);
       this.respawnPoint = point;
       this.lastCheckpoint.set(this.current.name, point);
-      if (c.active) continue; // already lit: just moves the respawn point here
+      const moved = !before || before.x !== point.x || before.y !== point.y;
+      const lighting = !c.active;
       c.active = true;
+      // auto-save (crystals and shrines alike), only when something changed
+      if (lighting || moved || hadPending) this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+      if (!lighting) continue; // already lit: just moves the respawn point here
       this.ctx.sfx("checkpoint");
       this.fx.burst(c.x, c.y - 9, 18, { colors: [COLORS.C, COLORS.e, COLORS.E, COLORS.W], speed: 60, life: 0.6 });
     }
@@ -321,6 +428,9 @@ export class GameScene implements Scene {
       if (e.kind === "shard") {
         this.progress.secure(e.key, e.kind); // story items are kept at once
         this.unlock(String(e.props.unlocks ?? ""));
+      } else if (e.kind === "moment") {
+        this.progress.secure(e.key, e.kind); // a memory, kept at once
+        this.startMoment(e);
       } else {
         this.progress.pending.push({ key: e.key, kind: e.kind });
         this.ctx.sfx("echoAppear");
@@ -486,6 +596,13 @@ export class GameScene implements Scene {
     this.renderPopup();
     this.renderBanner();
     if (this.debug) this.renderDebug(camX, camY);
+    this.renderMoment(camX, camY);
+    if (this.conversation) drawDialogueBox(draw, this.conversation, this.t);
+    if (this.mapOpen) this.map.render(this.t);
+    if (this.fastTravel) {
+      const k = this.fastTravel.t / TRAVEL_FADE;
+      draw.rect(0, 0, WIDTH, HEIGHT, COLORS.e, Math.max(0, Math.min(1, k < 1 ? k : 2 - k)) * 0.9);
+    }
 
     if (this.paused) {
       draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.6);
@@ -511,6 +628,185 @@ export class GameScene implements Scene {
     draw.frame(draw.img.player, s.frame, s.x - 4 - camX, s.y - 4 - camY, { flip: s.facing < 0, row: 2 });
   }
 
+  // ------------------------------------------------------------------ dialogues
+  /** The NPC or Lingering villager Iris can talk to right now. */
+  private talkTarget(): Entity | null {
+    const p = this.player;
+    if (p.dead || !p.grounded || this.conversation) return null;
+    let best: Entity | null = null;
+    let bestD = TALK_RANGE;
+    for (const e of this.level.entities) {
+      if (e.kind !== "npc" && e.kind !== "lingering") continue;
+      const d = Math.hypot(p.x + 4 - e.x, p.y + 6 - (e.y - 12));
+      if (d < bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  private openConversation(e: Entity): void {
+    let lines;
+    if (e.kind === "lingering") {
+      lines = lingeringLine(String(e.props.text ?? "..."));
+    } else {
+      const script = NPC_DIALOGUES[String(e.props.name ?? "")];
+      if (!script) return;
+      lines = this.talked.has(e.key) ? script.repeat() : script.first();
+      this.talked.add(e.key);
+    }
+    this.conversation = new Conversation(lines);
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("select");
+  }
+
+  private updateConversation(dt: number): void {
+    const { input } = this.ctx;
+    const conv = this.conversation!;
+    if (input.justPressed("pause")) conv.skip();
+    else if (input.justPressed("jump") || input.justPressed("interact")) conv.confirm();
+    else if (input.justPressed("up")) conv.move(-1);
+    else if (input.justPressed("down")) conv.move(1);
+    if (conv.update(dt).blip) this.ctx.audio.blip(conv.line.speaker.voice);
+    if (conv.done) {
+      this.conversation = null;
+      if (conv.effects.includes("revealMap") && !this.revealed.has(WORLD)) {
+        this.revealed.add(WORLD);
+        this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+      }
+      this.ctx.audio.setDucked(false);
+      this.player.cancelJumpBuffer();
+    }
+  }
+
+  // ------------------------------------------------------------------ Lumi's moments
+  private startMoment(e: Entity): void {
+    // Lumi appears a step away from Iris, not on top of her
+    const side = this.player.x + 4 < e.x ? 1 : -1;
+    this.moment = { scene: new MomentScene(Number(e.props.index ?? 1)), x: e.x + side * 12, y: e.y };
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("echoAppear");
+    this.fx.burst(e.x, e.y - 14, 24, { colors: [COLORS.e, COLORS.E, COLORS.C], speed: 40, life: 1, gravity: -20 });
+  }
+
+  private updateMoment(dt: number): void {
+    const { input } = this.ctx;
+    const m = this.moment!;
+    if (input.justPressed("jump") || input.justPressed("interact")) m.scene.skip();
+    if (m.scene.update(dt).blip) this.ctx.audio.blip("lingering");
+    this.fx.update(dt);
+    if (Math.random() < dt * 6 * m.scene.alpha) {
+      this.fx.burst(m.x + (Math.random() - 0.5) * 20, m.y - 10 - Math.random() * 30, 1, { colors: [COLORS.e, COLORS.E], speed: 8, life: 1.2, gravity: -10 });
+    }
+    if (m.scene.done) {
+      this.moment = null;
+      this.ctx.audio.setDucked(false);
+      this.player.cancelJumpBuffer();
+      this.popup = { kind: "moment", t: POPUP_TIME };
+      this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+    }
+  }
+
+  /** Lumi as an echo, her kite on its string, and her line. */
+  private renderMoment(camX: number, camY: number): void {
+    const m = this.moment;
+    if (!m) return;
+    const { draw } = this.ctx;
+    const a = m.scene.alpha;
+    draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.35 * a);
+    const x = Math.round(m.x - camX);
+    const y = Math.round(m.y - camY);
+    const sway = Math.sin(this.t * 1.6);
+    const kx = x + 18 + Math.round(sway * 3);
+    const ky = y - 52 + Math.round(Math.cos(this.t * 1.3) * 2);
+    draw.ctx.globalAlpha = a * 0.6;
+    draw.ctx.strokeStyle = COLORS.e;
+    draw.ctx.beginPath();
+    draw.ctx.moveTo(x + 3.5, y - 19.5);
+    draw.ctx.quadraticCurveTo(x + 14, y - 28, kx + 0.5, ky + 12.5);
+    draw.ctx.stroke();
+    draw.ctx.globalAlpha = a * 0.75;
+    draw.frame(draw.img.lumi, Math.floor(this.t * 3) % 2, x - 8, y - 24, { fh: 24 });
+    draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME.moment, kx - 8, ky - 4);
+    draw.ctx.globalAlpha = a;
+    if (m.scene.shown) this.label(m.scene.shown, x, y - 66, C.echoLight);
+    draw.ctx.globalAlpha = 1;
+  }
+
+  // ------------------------------------------------------------------ map & fast travel
+  private shrines(): ShrineSpot[] {
+    const out: ShrineSpot[] = [];
+    for (const r of this.world.rooms)
+      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
+    return out;
+  }
+
+  private litCheckpoints(): Set<string> {
+    const lit = new Set<string>();
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.add(`${r.name}:${i}`));
+    return lit;
+  }
+
+  /** The shrine Iris stands at (alive and on the ground), if any. */
+  private shrineHere(): string | null {
+    const p = this.player;
+    if (p.dead || !p.grounded) return null;
+    const i = this.level.checkpoints.findIndex((c) => c.kind === "shrine" && overlaps(p.hitbox, Level.checkpointRect(c)));
+    return i >= 0 ? shrineKey({ room: this.current.name, index: i }) : null;
+  }
+
+  private openMap(): void {
+    this.setPaused(false);
+    const lit = this.litCheckpoints();
+    const here = this.shrineHere();
+    const targets = here ? travelTargets(this.shrines(), lit, here) : [];
+    const keys = this.keyLabels();
+    this.map.open({
+      visited: this.visited,
+      revealed: this.revealed.has(WORLD),
+      lit,
+      player: { x: this.current.x + this.player.x + 4, y: this.current.y + this.player.y + 12 },
+      currentRoom: this.current.name,
+      travel: targets.length > 0 ? targets : null,
+      keys: { map: keys.map, jump: keys.jump },
+    });
+    this.mapOpen = true;
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("pause");
+  }
+
+  private closeMap(): void {
+    this.mapOpen = false;
+    this.ctx.audio.setDucked(false);
+    this.ctx.sfx("back");
+    this.player.cancelJumpBuffer();
+  }
+
+  private startFastTravel(target: ShrineSpot): void {
+    this.mapOpen = false;
+    this.fastTravel = { t: 0, target, arrived: false };
+    this.ctx.sfx("checkpoint"); // the shrine bell rings
+  }
+
+  private updateFastTravel(dt: number): void {
+    const ft = this.fastTravel!;
+    ft.t += dt;
+    if (!ft.arrived && ft.t >= TRAVEL_FADE) {
+      ft.arrived = true;
+      const room = this.world.rooms.find((r) => r.name === ft.target.room)!;
+      const point = { x: ft.target.x - room.x, y: ft.target.y - room.y };
+      this.setRoom(room);
+      this.respawnPoint = point;
+      this.lastCheckpoint.set(room.name, point);
+      this.restartRoom();
+      this.ctx.audio.setDucked(false);
+      this.ctx.sfx("checkpoint"); // the bell there answers
+      this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+    }
+    if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
+  }
+
   private renderEntities(camX: number, camY: number): void {
     const { draw } = this.ctx;
     const p = this.player;
@@ -533,13 +829,13 @@ export class GameScene implements Scene {
         // a villager frozen in the Stilling: a faint echo with a thought
         const shimmer = 0.4 + 0.1 * Math.sin(this.t * 2 + e.x);
         draw.frame(draw.img.npc, 0, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, alpha: shimmer, flip: e.props.flip === true });
-        if (near(e.x, e.y - 12)) this.label(String(e.props.text ?? "..."), e.x - camX, e.y - 34 - camY, C.echoLight);
+        if (near(e.x, e.y - 12) && !this.conversation) this.label(`(${keys.interact})`, e.x - camX, e.y - 34 - camY, C.echoLight);
         continue;
       }
       if (e.kind === "npc") {
         const blink = Math.floor(this.t * 2 + e.x) % 7 === 0 ? 1 : 0;
         draw.frame(draw.img.npc, blink, e.x - 8 - camX, e.y - 24 - camY, { fh: 24, flip: p.x + 4 < e.x });
-        if (near(e.x, e.y - 12)) this.label(String(e.props.name ?? "???"), e.x - camX, e.y - 34 - camY, C.bone);
+        if (near(e.x, e.y - 12) && !this.conversation) this.label(`${String(e.props.name ?? "???")} (${keys.interact})`, e.x - camX, e.y - 34 - camY, C.bone);
         continue;
       }
       if (this.progress.taken(e.key)) continue;
@@ -634,10 +930,12 @@ export class GameScene implements Scene {
     const { draw } = this.ctx;
     const { kind, t } = this.popup;
     const slide = Math.min(1, (POPUP_TIME - t) * 6, t * 3);
-    const x = WIDTH - 4 - Math.round(slide * 100);
+    const count = kind === "moment" ? `${this.progress.count(kind)}/${MOMENT_COUNT}` : `${this.progress.count(kind)}`;
+    const text = `${COLLECTIBLE_NAME[kind]} ${count}`;
+    const x = WIDTH - 4 - Math.round(slide * (18 + draw.textWidth(text) + 4));
     draw.ctx.globalAlpha = slide;
     draw.frame(draw.img.collectibles, COLLECTIBLE_FRAME[kind], x, 4);
-    draw.text(`${COLLECTIBLE_NAME[kind]} ${this.progress.count(kind)}`, x + 18, 9, C.bone);
+    draw.text(text, x + 18, 9, C.bone);
     draw.ctx.globalAlpha = 1;
   }
 

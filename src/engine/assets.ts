@@ -7,6 +7,8 @@ import doorUrl from "../../assets/sprites/door.png";
 import collectiblesUrl from "../../assets/sprites/collectibles.png";
 import shrineUrl from "../../assets/sprites/shrine.png";
 import npcUrl from "../../assets/sprites/npc.png";
+import portraitsUrl from "../../assets/sprites/portraits.png";
+import lumiUrl from "../../assets/sprites/lumi.png";
 import decorUrl from "../../assets/sprites/decor.png";
 import uiUrl from "../../assets/ui/ui.png";
 import fontUrl from "../../assets/ui/font.png";
@@ -24,6 +26,8 @@ const URLS = {
   collectibles: collectiblesUrl,
   shrine: shrineUrl,
   npc: npcUrl,
+  portraits: portraitsUrl,
+  lumi: lumiUrl,
   decor: decorUrl,
   ui: uiUrl,
   font: fontUrl,

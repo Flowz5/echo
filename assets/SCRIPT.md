@@ -193,7 +193,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 - **Echo shield:** an echo blocks Stillness fog streams and moving hazards.
 - **Phase step** (chapter 4): ring a chime so echoes go intangible, pass through, and they become solid again behind you.
 
-### 4.3 Checkpoints & saving
+### 4.3 Checkpoints & saving ✅ (saving: 3 slots, auto-save at crystals and shrines)
 | Type | Look | Function |
 |---|---|---|
 | **Echo Crystal** | cyan crystal on a stone base, dim grey until touched ✅ sprite | Room checkpoint. On death, Iris respawns at the last touched crystal instantly. Touching one refills dash and double jump |
@@ -202,7 +202,7 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 
 - **Death** resets the current room: echoes, buttons, crumble blocks and enemies' positions. Everything since the last crystal is replayed.
 - **Collectibles** are only *secured* when Iris reaches the next crystal or shrine after picking them up (shown as a small icon following her until then).
-- **Saving:** 3 save slots, auto-save at every shrine and at chapter transitions. Stored locally.
+- **Saving:** 3 save slots, stored locally. **Every crystal and shrine touched auto-saves** (only when something changed: newly lit, new respawn point or collectibles secured); CONTINUE resumes at the last one. Saved: abilities, echo slots, secured collectibles, lit checkpoints, respawn point per room, NPCs talked to, visited rooms (for the map), play time. Pending collectibles are never saved. Chapter transitions will save too.
 - **Death counter and timer** per chapter, shown on the chapter end screen, never during play.
 
 ### 4.4 Collectibles
@@ -232,12 +232,13 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 | Bell chime | amber + cyan | Hitting it makes every echo intangible for 3 s | 4 |
 | Stillwarden's seal | violet | Wall that only opens when every echo slot is in use | 4 |
 
-### 4.6 Dialogue system
-- Walk up to an NPC: a small **"UP"** key prompt (the player's actual up key) floats above them.
-- Press up: the **dialogue box** opens at the bottom of the screen (panel, 32×32 portrait on the left, name in the NPC's colour, text typing at 40 characters per second with the voice blip).
-- **Jump** = show the full line, then next line. **Pause** = skip the conversation.
+### 4.6 Dialogue system ✅ (Tamsin, Quill and the Lingering villagers in chapter 0)
+- Walk up to an NPC: their name and the player's actual **INTERACT** key (default **E**, rebindable) float above them. The Lingering villagers show just the key and say their one line in the box.
+- Press INTERACT: the **dialogue box** opens at the bottom of the screen (panel, 32×32 portrait on the left, name in the NPC's colour, text typing at 40 characters per second, a short pause after commas and a longer one after full stops). Iris waits and the music ducks.
+- **Voices:** a synth blip every second letter, with a little random pitch. Tamsin: low, warm triangle. Quill: high, fussy thin pulse. System lines: a neutral beep. Lingering: a faint sine with an echo.
+- **Jump** or **Interact** = show the full line, then next line. **Pause** = skip the conversation.
 - Some lines offer **choices** (up/down + jump). Choices never lock content. They change a reply or a later line.
-- NPCs have a **first talk**, **repeat talk** (short) and **after-chapter** lines.
+- NPCs have a **first talk**, **repeat talk** (short) and **after-chapter** lines. For now the first talk is remembered for the current run only (no save system yet). Quill's repeat line: "THE MILL'S ON THE MAP NOW. THE MILL IS ALWAYS ON THE MAP."
 - Gameplay never pauses for dialogue outside of NPC talks. Story beats inside rooms use **floating text** above characters so the action keeps flowing.
 
 ### 4.7 Hint system (Pip)
@@ -255,8 +256,8 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 - **INVINCIBLE:** ON / OFF (spikes and void respawn you at the last safe spot)
 - **REWIND WINDOW:** 2 / 3 / 4 s
 
-### 4.9 Map & fast travel
-**Opening the map:** MAP key (default **M**, rebindable) or **PAUSE → MAP**.
+### 4.9 Map & fast travel ✅ (chapter view, Quill's reveal, fast travel; world view, pins, collectible dots and gate locks to come)
+**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built as **Quill's own map**: ink on a parchment sheet (3 px per tile). Calm, almost monochrome sepia: visited rooms show their rock as a light sepia wash with an inked outline, planks as thin lines, thorns as small ticks, and the place's name; rooms Quill revealed are dotted outlines; ink bell (with a gold glint), crystal (filled when lit) and NPC dot; a compass rose and his signature "- Q."; only Iris's Eye has a touch of cyan; arrows pan; the chosen shrine is circled in ink when travelling.
 
 **Two zoom levels**
 - **World view:** the whole valley as a vertical cross-section, from Lanternrest at the bottom to the Belltower at the top. Each chapter shows its completion (shards, notes, pages, moments, quests).
@@ -281,7 +282,8 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 | Iris's Eye | You are here |
 
 **Fast travel**
-- Unlocked at the **Ruins Shrine** (chapter 1), when Tamsin realises "the bells can carry *you* too, child".
+- Planned: unlocked at the **Ruins Shrine** (chapter 1), when Tamsin realises "the bells can carry *you* too, child". **For now it is available from the start** (chapter 0 has 3 shrines; handy to fetch the 0-9 page with the dash).
+- Built: open the map while standing at a lit shrine, LEFT/RIGHT picks another lit shrine, JUMP travels (bell chime, cyan fade out and in, the game saves at the destination).
 - Works from **any Bell Shrine** to **any visited shrine** or **Lanternrest**: open the map at a shrine, pick a bell, confirm.
 - Short transition: Iris rings the shrine bell, dissolves into cyan light, and reappears at the other shrine as the bell there answers.
 - Fast travel is never available mid-room or during chase sequences.
@@ -381,12 +383,12 @@ Iris wakes up in Lanternrest on her "birthday", the day Tamsin decided she is ol
 | 0-6 | The Old Bridge | A broken bridge over the void: double-jump chains between the arches. Crystal on the second arch, a Lost Page up high |
 | 0-7 | The Broken Mill | Planks up to **Quill**, drop-through, the **wall-jump chimney**, then upstairs a spiky floor crossed on planks |
 | 0-8 | Mill Roof | Chimney stacks over spikes; wall-jump up the tall pair (Lost Page on top) |
-| 0-9 | Lumi's Field | The hill and **Lumi's Moment 1**, a gap over the void. Dash gate: a floating island (Lost Page) |
+| 0-9 | Lumi's Field | The hill and **Lumi's Moment 1**, a gap over the void. Dash gate: a floating island high over the gap, seen from the hilltop (Lost Page): a dash jump + double jump from the hilltop reaches it, no double jump or wall kick can |
 | 0-10 | Spike Hollow | A long way down: spike pits, planks over a spike floor, three crystals. Rewind gate: a hanging plate opens a hidden alcove (Lost Page) |
 | 0-11 | The Vale Shrine | Bell Shrine. The road forks: up = Orchard Way, down through the floor = the Millrace |
 | 0-11a | Orchard Way | Platforming route: treetop planks over thorns, a crystal on a trunk halfway, a high plank with a Lost Page |
 | 0-11b | The Millrace | Puzzle route: drop-through stack, crawl under, climb, cross over, then a spiky channel on planks. Two Lost Pages |
-| 0-12 | Shard of Motion | Both routes meet above a pit too wide to cross: grab the **Shard of Motion** mid-jump, it unlocks the **dash**, dash across |
+| 0-12 | Shard of Motion | Both routes meet at a pit under a ruined arch (a 4-tile-high tunnel, lips over the void on both sides): it can't be crossed or flown over without the dash, so the only way on is to grab the **Shard of Motion** mid-jump, it unlocks the **dash**, then dash + double jump across |
 | 0-13 | The Rise | The dash tutorial: dash across an 8-tile gap, dash up a 6-tile ledge, dash + double jump over the void, then on to the Thorn Steps |
 | 0-14 | The Thorn Steps | **The chapter's exam** (firm but fair, a crystal before every beat), floating slabs, stones and short walls over a thorn pit: (1) the **dash jump** + double jump over 8 tiles under an arch; (2) dash jump into a chimney, wall-jump up, dash out 8 tiles from the top; (3) drop to a rest, then dash jump + double jump up onto a two-tile stone (8) and up again to a slab (7); (4) the same onto a second stone (8), then up to the exit ledge (5 out, 2 up). Every beat checked with natural inputs at several timings; experts may find lines without the dash
 | 0-14a | The Thorn Spire ★ | Optional, **really demanding**: up through the hole above the chimney. One crystal at the door, then walls, a slab and a lone stone with no ground, every jump needing the dash. A Lost Page at the far end, then drop back onto the Steps' exit ledge |
@@ -680,10 +682,11 @@ At the end, Corin falls to his knees beside the Bell. He doesn't fight anymore.
 **TAMSIN:** Whatever you find up there, whatever you choose…
 **TAMSIN:** …choose it yourself. Not for me. Not for the valley. For you.
 
-### 6.8 Lumi's Moments (silent scenes, one line each)
+### 6.8 Lumi's Moments (silent scenes, one line each) ✅ (scene built, moment 1 placed)
+Touching the moment's kite: time stops (Iris waits, music ducks, the screen dims a little), Lumi fades in as a cyan echo a step away from Iris, her kite floating on its string, sparkles drifting up; her line types out slowly above her with the faint Lingering voice, holds, and she fades away (~5 s, skippable with JUMP/INTERACT after 1 s). Then "LUMI'S MOMENT n/5". A moment is a memory: it is kept at once (not lost on death) and the game saves.
 | # | Where | Scene | Line |
 |---|---|---|---|
-| 1 | Lumi's Field (0-7) | Flying her kite, laughing, spinning | "LOOK, PAPA! IT'S TOUCHING THE STARS!" |
+| 1 | Lumi's Field (0-9) | Flying her kite, laughing, spinning | "LOOK, PAPA! IT'S TOUCHING THE STARS!" |
 | 2 | Lantern Market (1-8) | Tugging a stranger's sleeve | "HAVE YOU SEEN MY PAPA? HE RINGS THE BELL." |
 | 3 | Crystal Hollow (2-10) | Counting with her eyes closed, alone | "…NINE, TEN! READY OR NOT!" `[nobody comes]` |
 | 4 | Archive of Hours (3-9) | Asleep at her father's desk | "IS THE MORNING GOING TO BE BRIGHT?" |
@@ -877,12 +880,25 @@ All in-game text is **English** and **uppercase** (bitmap font).
 Background: parallax night sky, Iris running and leaving echoes behind her. Title logo bobbing.
 ```
 ECHO
-  > PLAY
+  > CONTINUE          (only when a save exists: the last file played)
+    PLAY              (opens CHOOSE A FILE)
     SETTINGS
     CREDITS
 V0.1                     SPACE TO SELECT
 ```
-Planned: `CONTINUE` (when a save exists), `CHAPTER SELECT` (after chapter 0).
+Planned: `CHAPTER SELECT` (after chapter 0).
+
+### Choose a file ✅
+```
+CHOOSE A FILE
+  FILE 1                        EMPTY
+> FILE 2       THE THORN STEPS   0:42
+  FILE 3                        EMPTY
+  ERASE A FILE
+  BACK
+SHARDS 1   PAGES 2      (for the highlighted file)
+```
+Empty file = new game, full file = resume. ERASE A FILE, then pick a file and press again to confirm.
 
 ### Settings ✅
 ```
@@ -904,6 +920,8 @@ CONTROLS
   JUMP                         SPACE
   DASH                         L-SHIFT
   REWIND                       R
+  INTERACT                     E (talk to people, later other things)
+  MAP                          C
   PAUSE                        ESC
   RESET TO DEFAULT
   BACK
@@ -914,7 +932,7 @@ PRESS A KEY...      (while rebinding)
 ```
 PAUSED
   > RESUME
-    MAP          (planned)
+    MAP
     JOURNAL      (planned: side quests, collectibles, Lost Pages)
     RESTART ROOM
     SETTINGS

@@ -256,7 +256,7 @@ r.fill(46, 11, 47, 12)
 r.put(1, 12, "S")
 r.put(18, 8, "C")
 r.put(49, 12, "S")
-r.obj("page", 27, 4)
+r.obj("page", 27, 2)
 r.deco("ruin_pillar", 7, 9, "mid")
 r.deco("ruin_pillar", 37, 9, "mid", flip=True)
 r.deco("lantern_post", 3, 13)
@@ -333,11 +333,11 @@ r.ground(7, 25, 12)
 r.fill(12, 9, 18, 11)                  # the hill
 r.fill(14, 7, 16, 8)                   # hilltop
 r.ground(29, 47, 12)                   # after the gap (cols 26-28 = the void)
-r.fill(26, 6, 28, 6)                   # island: 6 up, out of reach without the dash
+r.fill(26, 3, 28, 3)                   # island: high over the gap, out of reach even with a wall kick off the hill
 r.put(1, 7, "S")
 r.put(30, 11, "S")
-r.obj("moment", 15, 6)
-r.obj("page", 27, 5)
+r.obj("moment", 15, 6, index=1)
+r.obj("page", 27, 2)
 r.lingering(38, 11, "THE KITES ALWAYS FLEW HERE.")
 r.deco("tree", 15, 7, "back")
 r.deco("dead_tree", 44, 12, "back")
@@ -472,9 +472,13 @@ r.fill(0, 8, 0, 16)
 r.plank(6, 9, 10)                      # way down
 r.plank(2, 5, 13)
 r.plank(7, 10, 16)
-r.ground(0, 13, 21)                    # lower floor (from the Millrace)
+r.ground(0, 7, 21)                     # lower floor (from the Millrace)…
+r.fill(8, 21, 13, 22)                  # …ending on a lip over the void (no tall wall to kick off)
 r.clear(0, 17, 0, 20)
-r.ground(22, 35, 21)                   # far side (cols 14-21: the pit)
+r.fill(22, 21, 27, 22)                 # far side: a lip too (cols 14-21: the pit), so falling short
+r.ground(28, 35, 21)                   # can't be saved by climbing a wall
+r.fill(12, 0, 23, 16)                  # a ruined arch over the pit: no flying over it from the planks,
+                                       # and inside, jumps are capped: grab the shard, dash out
 r.clear(35, 17, 35, 20)                # on to the Rise
 r.fill(35, 0, 35, 7)                   # wall above
 r.put(2, 6, "S")
@@ -496,7 +500,7 @@ r.ground(0, 5, 13)
 r.ground(14, 19, 13)                   # after an 8-tile gap: dash needed
 r.ground(22, 27, 7)                    # a high ledge: dash up
 r.fill(37, 8, 40, 8)                   # a lone slab over the void
-r.ground(47, 55, 7)                    # the overlook
+r.ground(47, 55, 7)                    # the way on to the Thorn Steps
 r.put(2, 12, "S")
 r.put(16, 12, "S")
 r.put(24, 6, "C")
