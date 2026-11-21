@@ -161,3 +161,16 @@ describe("dash jump", () => {
     expect(player.canDoubleJump).toBe(false);
   });
 });
+
+describe("closing a dialogue", () => {
+  it("cancelJumpBuffer drops a jump pressed just before", () => {
+    const { player, input } = makePlayer(FLAT);
+    step(player, input, 5);
+    input.press("jump");
+    input.endFrame(); // the press was eaten by the dialogue, but the player saw the buffer…
+    (player as unknown as { buffer: number }).buffer = 0.12;
+    player.cancelJumpBuffer();
+    step(player, input, 1);
+    expect(player.vy).toBeGreaterThanOrEqual(0);
+  });
+});
