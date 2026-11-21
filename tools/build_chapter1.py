@@ -157,24 +157,25 @@ def rose_trellis():
 
 def updraft_square():
     """1-7 Updraft Square: a wind fissure over thorns lifts Iris past a high ledge; dash out of the
-    column to the left onto it (it floats 10 tiles above the floor). Both walls are 12+ tiles from
-    the ledge, so climbing a wall doesn't get you there."""
-    r = Room("updraft_square", "Updraft Square", 30, 16, (98, -90))
-    r.ground(0, 29, 15)
+    column to the left onto it (it floats 10 tiles above the floor). The ledge is 15 tiles from the
+    left wall and 20 from the right one, so climbing a wall doesn't get you there."""
+    r = Room("updraft_square", "Updraft Square", 40, 16, (98, -90))
+    r.ground(0, 39, 15)
     r.clear(9, 15, 12, 15)                 # the hole from Rose Trellis's opening
     r.put(6, 14, "S")
     r.fill(0, 0, 0, 14)                    # left wall
-    r.fill(29, 0, 29, 14)                  # right wall
-    r.spikes(17, 28, 14)
-    r.vent(19, 3, 13, w=2)                 # the air column over the fissure
-    r.fill(19, 14, 20, 14)                 # rock with the fissure
-    r.fill(12, 5, 16, 6)                   # the ledge (stand row 4), exit up above it
-    r.fill(1, 0, 11, 0)                    # ceiling, opening at cols 12..16
-    r.fill(17, 0, 28, 0)
+    r.fill(39, 0, 39, 14)                  # right wall
+    r.spikes(17, 38, 14)
+    r.vent(22, 3, 13, w=2)                 # the air column over the fissure
+    r.fill(22, 14, 23, 14)                 # rock with the fissure
+    r.fill(15, 5, 19, 6)                   # the ledge (stand row 4), exit up above it
+    r.fill(1, 0, 14, 0)                    # ceiling, opening at cols 15..19
+    r.fill(20, 0, 38, 0)
     r.deco("ruin_arch", 5, 15, "back")
     r.deco("lantern_post_bent", 3, 15)
-    r.deco("rubble_s", 16, 15)
-    r.hang("banner", 24, 0, exact=True)
+    r.deco("rubble_s", 15, 15)
+    r.hang("banner", 28, 0, exact=True)
+    r.hang("rose_vine", 34, 0, exact=True)
     rooms.append(r)
 
 
@@ -182,7 +183,7 @@ def quills_perch():
     """1-8 Quill's Perch: two screens up a broken spire — a crumble step, a wind fissure, a crystal
     ledge, another slab and fissure — to Quill's perch under the roof, and out through a gap in the
     roof on the left. The walls are 13 tiles from the safe platform, so no climbing round."""
-    r = Room("quills_perch", "Quill's Perch", 36, 32, (94, -122))
+    r = Room("quills_perch", "Quill's Perch", 36, 32, (97, -122))
     r.ground(0, 35, 31)
     r.clear(16, 31, 20, 31)                # the hole from Updraft Square's exit
     r.put(15, 30, "S")
@@ -212,7 +213,7 @@ def lantern_market():
     """1-9 The Lantern Market: the old market square, stall roofs to climb, dead lanterns. Lumi's
     Moment 2 waits high in the top-left corner (stall roofs, then a flower). A crate in front of
     the left wall hides a low gap: the way into One More Bug."""
-    r = Room("lantern_market", "The Lantern Market", 40, 16, (80, -138))
+    r = Room("lantern_market", "The Lantern Market", 40, 16, (83, -138))
     r.ground(0, 39, 15)
     r.clear(15, 15, 19, 15)                # the hole from the gap in Quill's spire roof
     r.put(22, 14, "S")
@@ -239,7 +240,7 @@ def lantern_market():
 def one_more_bug():
     """Secret (SCRIPT.md secret 6): a hidden back room behind the market, a Lingering figure frozen at
     a desk, a sign, and part 1's hidden Lost Page."""
-    r = Room("one_more_bug", "One More Bug", 20, 13, (60, -135))
+    r = Room("one_more_bug", "One More Bug", 20, 13, (63, -135))
     r.ground(0, 19, 12)
     r.fill(0, 0, 0, 11)
     r.fill(19, 0, 19, 10)                  # the gap into the market at row 11
@@ -257,7 +258,7 @@ def long_bridge():
     """1-10 The Long Bridge: crumble slabs over the void, three tiles each with short gaps — keep
     moving, they fall behind you — then a broken span 11 tiles wide with a dash flower in the
     middle. Above, a sealed alcove (the hanging switch over the gorge, for later)."""
-    r = Room("long_bridge", "The Long Bridge", 40, 16, (120, -138))
+    r = Room("long_bridge", "The Long Bridge", 40, 16, (123, -138))
     r.fill(0, 15, 9, 15)                   # the way in (level with the market's floor; Quill's spire below)
     r.put(3, 14, "S")
     r.fill(0, 0, 0, 9)                     # left wall above the way in (rows 10..14)
@@ -283,7 +284,7 @@ def long_bridge():
 def ruins_shrine():
     """1-11 Ruins Shrine: a Bell Shrine at the end of the bridge; the road splits here (the High Road
     up, the Low Road down — sealed until part 2 is built)."""
-    r = Room("ruins_shrine", "Ruins Shrine", 24, 16, (160, -138))
+    r = Room("ruins_shrine", "Ruins Shrine", 24, 16, (163, -138))
     r.ground(0, 23, 15)
     r.fill(0, 0, 0, 10)                    # left wall above the way in (rows 11..14)
     r.fill(23, 0, 23, 14)

@@ -7,7 +7,7 @@
  ["1-5 garden: across the rose gap", "rose_garden", [17, 12], {"kind": "exit", "side": "right", "rows": [8, 12]}, ["doubleJump", "wallJump", "dash"], true],
  ["1-6 trellis: entrance to the foot", "rose_trellis", [2, 20], {"kind": "tile", "rect": [12, 18, 14, 20]}, ["doubleJump", "wallJump", "dash"], true],
  ["1-6 trellis: foot to the top", "rose_trellis", [13, 20], {"kind": "exit", "side": "top", "cols": [12, 15]}, ["doubleJump", "wallJump", "dash"], true],
- ["1-7 updraft: onto the ledge", "updraft_square", [6, 14], {"kind": "tile", "rect": [12, 0, 16, 4]}, ["doubleJump", "wallJump", "dash"], true],
+ ["1-7 updraft: onto the ledge", "updraft_square", [6, 14], {"kind": "tile", "rect": [15, 0, 19, 4]}, ["doubleJump", "wallJump", "dash"], true],
  ["1-8 perch: crystal ledge", "quills_perch", [15, 30], {"kind": "tile", "rect": [9, 0, 14, 11]}, ["doubleJump", "wallJump", "dash"], true],
  ["1-8 perch: crystal ledge to the perch", "quills_perch", [11, 11], {"kind": "tile", "rect": [6, 0, 20, 2]}, ["doubleJump", "wallJump", "dash"], true],
  ["1-9 market: across to the bridge", "lantern_market", [22, 14], {"kind": "exit", "side": "right", "rows": [10, 14]}, ["doubleJump", "wallJump", "dash"], true],
