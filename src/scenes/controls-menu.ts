@@ -12,6 +12,7 @@ const ACTIONS: { action: Bindable; label: string }[] = [
   { action: "jump", label: "JUMP" },
   { action: "dash", label: "DASH" },
   { action: "rewind", label: "REWIND" },
+  { action: "interact", label: "INTERACT" },
   { action: "pause", label: "PAUSE" },
 ];
 

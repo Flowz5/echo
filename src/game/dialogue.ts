@@ -72,8 +72,10 @@ export class Conversation {
       this.timer -= 1 / CHARS_PER_SECOND;
       const ch = text[this.typed++];
       if (isLetter(ch) && this.letters++ % 2 === 0) blip = true;
+      const nextCh = text[this.typed];
+      if (ch === "." && nextCh === ".") continue; // inside "...": only the last dot waits
       if (ch === ",") this.timer -= COMMA_PAUSE;
-      else if (".!?…".includes(ch)) this.timer -= STOP_PAUSE;
+      else if (".!?".includes(ch)) this.timer -= STOP_PAUSE;
     }
     return { blip };
   }

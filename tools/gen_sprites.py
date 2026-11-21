@@ -941,6 +941,8 @@ if __name__ == "__main__":
     collectibles.save(S("sprites", "collectibles.png"))
     make_shrine().save(S("sprites", "shrine.png"))
     sheet([from_grid(NPC_BASE), from_grid(NPC_BLINK)]).save(S("sprites", "npc.png"))
+    from portrait_art import build_portraits  # noqa: E402 (dialogue portraits live in their own file)
+    sheet([from_grid(g) for g in build_portraits()]).save(S("sprites", "portraits.png"))
 
     # editor tileset for Tiled: one tile per terrain type (the game autotiles the ground itself)
     # order = Tiled tile ids 0..4: ground, one-way platform, spikes, pressure plate, door
@@ -992,6 +994,7 @@ if __name__ == "__main__":
         "shrine": {"file": "sprites/shrine.png", "frame": [16, 32]},
         "decor": {"file": "sprites/decor.png", "rects": decor_rects, "_note": "names ending in _0/_1 are 2-frame animations"},
         "npc": {"file": "sprites/npc.png", "frame": [16, 24], "order": ["idle", "blink"], "_note": "placeholder for every NPC until each gets its own sprite"},
+        "portraits": {"file": "sprites/portraits.png", "frame": [32, 32], "order": ["tamsin", "quill"]},
         "ui": {"file": "ui/ui.png", "rects": ui_rects},
         "font": {"file": "ui/font.png", "glyph": [5, 7], "advance": 6, "order": FONT_ORDER, "uppercaseOnly": True},
         "title": {"file": "ui/title.png", "size": [title.w, title.h]},

@@ -403,6 +403,17 @@
     ],
     "_note": "placeholder for every NPC until each gets its own sprite"
   },
+  "portraits": {
+    "file": "sprites/portraits.png",
+    "frame": [
+      32,
+      32
+    ],
+    "order": [
+      "tamsin",
+      "quill"
+    ]
+  },
   "ui": {
     "file": "ui/ui.png",
     "rects": {

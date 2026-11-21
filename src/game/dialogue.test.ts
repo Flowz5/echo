@@ -36,6 +36,15 @@ describe("conversation", () => {
     expect(comma.shown.length).toBeLessThan(plain.shown.length);
   });
 
+  it("an ellipsis pauses like one full stop, not three", () => {
+    const dots = new Conversation([say("...ABCDEFGHIJ")]);
+    const stop = new Conversation([say(".ABCDEFGHIJKL")]);
+    run(dots, 0.6);
+    run(stop, 0.6);
+    expect(Math.abs(dots.shown.length - stop.shown.length)).toBeLessThanOrEqual(4);
+    expect(dots.shown.length).toBeGreaterThan(4);
+  });
+
   it("blips every second letter and never on spaces", () => {
     expect(run(new Conversation([say("ABCDEF")]), 1)).toBe(3);
     expect(run(new Conversation([say("A B C D")]), 1)).toBe(2);
