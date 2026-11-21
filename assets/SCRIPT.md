@@ -219,9 +219,9 @@ Translucent villagers frozen mid-action throughout the valley (a baker holding a
 | Spikes ✅ | danger | Instant death (bottom 9 px only) | 0 |
 | The void ✅ | — | Death after the 0.5 s falling window | 0 |
 | One-way platform ✅ | neutral | Solid from above, drop through with down + jump | 0 |
-| Crumble stone | neutral | Shakes for 0.4 s when stood on, falls, reforms after 2 s | 1 |
-| Dash flower | rose | Refills the dash mid-air, regrows after 2.5 s | 1 |
-| Wind vent | neutral | Pushes Iris up while she's above it | 1 |
+| Crumble stone ✅ | neutral | A horizontal run breaks as one slab: shakes 0.4 s when stood on (or wall-slid against, or stood on by an echo), falls, reforms after 2 s once nothing is in the way. Rewind brings fallen stones back, except where an echo now stands | 1 |
+| Dash flower ✅ | rose | Refills the dash (not the double jump) when touched with the dash spent, regrows after 2.5 s. Rewind regrows it | 1 |
+| Wind vent ✅ | neutral | Pushes Iris up while she's in its air column (up to 200 px/s); dashing ignores it | 1 |
 | Pressure plate ✅ sprite | amber | Held down while something stands on it | 2 |
 | Lever | amber | Toggles on hit (stays) | 2 |
 | Door ✅ sprite | amber | Opens while its plate or lever is active | 2 |
@@ -332,7 +332,7 @@ Side quests are given by NPCs, tracked in **PAUSE → JOURNAL** and marked on th
 
 Each return trip is short (fast travel), and the old areas *change* slightly when you come back: more NPC lines, new Lingering thoughts and new Lumi's Moment angles.
 
-### 4.12 Time fractures (zone variations)
+### 4.12 Time fractures (zone variations) (Drift ✅: zone tint, shimmering outline, slow motes, music low-passed)
 The crack in Aurel did not break time evenly. In some places it **bent** instead of stopping: these are **time fractures**, bounded zones where the rules of movement change. They are the valley's "weather" and give each chapter its own flavour.
 
 **Rules**
@@ -344,7 +344,7 @@ The crack in Aurel did not break time evenly. In some places it **bent** instead
 
 | Fracture | Effect | Look & sound | Main chapter | Puzzle idea |
 |---|---|---|---|---|
-| **Drift** (low gravity) | Gravity ×0.45, max fall ×0.6, jumps ~2× higher, longer airtime | Slow-falling dust motes, bluish tint, music low-passed and reverb up | 1 Starfall Ruins | Long floating jumps over the gorge, dash in the air to steer, echoes left mid-float become high platforms |
+| **Drift** (low gravity) ✅ | Gravity ×0.45, max fall ×0.6, jumps ~2× higher, longer airtime | Slow-falling dust motes, bluish tint, music low-passed and reverb up | 1 Starfall Ruins | Long floating jumps over the gorge, dash in the air to steer, echoes left mid-float become high platforms |
 | **Weight** (heavy gravity) | Gravity ×1.6, jump ~60 %, but dash ×1.3 | Dust falls fast, darker tint, deeper bass | 2 Mirror Caves | Jumps can't reach, so dashes and echo steps must |
 | **Haste** (fast time) | Everything in the zone (Iris, platforms, hazards) runs at 1.4× speed | Particles streak, music pitched up a semitone | 3 Clockwork Spire | Timed gates that are impossible outside the zone, possible inside |
 | **Linger** (slow time) | Everything runs at 0.6× speed, *except* Iris's dash | Particles crawl, music slows and stretches | 3 Clockwork Spire | Slip between slowed pendulums and crushers |

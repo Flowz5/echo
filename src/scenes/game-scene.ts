@@ -9,6 +9,7 @@ import { Effects } from "../game/particles";
 import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import type { SaveData } from "../game/save";
+import type { MechEvent, MechSnapshot } from "../game/mechanics";
 import { CHAPTERS, chapterDef } from "../game/chapters";
 import { World, type RoomDef } from "../game/world";
 import { MOMENT_COUNT, MomentScene } from "../game/lumi";
@@ -60,6 +61,8 @@ const UNLOCK_TEXT: Record<string, { title: string; hint: (keys: Record<string, s
 interface Rewinding {
   /** recorded moments, newest first */
   path: PlayerSnapshot[];
+  /** crumble stones and flowers as they were at the oldest recorded step (restored on landing) */
+  mech: MechSnapshot;
   t: number;
 }
 
@@ -118,6 +121,10 @@ export class GameScene implements Scene {
   private readonly pauseMenu: OptionList;
 
   private history: PlayerSnapshot[] = [];
+  /** Iris is inside a Drift zone (music muffled) */
+  private inDrift = false;
+  /** mechanics state recorded alongside `history`, step for step */
+  private mechHistory: MechSnapshot[] = [];
   private rewinding: Rewinding | null = null;
   private transition: Transition | null = null;
   private rewindCooldown = 0;
@@ -135,8 +142,8 @@ export class GameScene implements Scene {
         { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
         { kind: "action", label: "MAP", run: () => this.openMap() },
         { kind: "action", label: "RESTART ROOM", run: () => this.restartRoom() },
-        { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
-        { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
+        { kind: "action", label: "SETTINGS", run: () => (this.clearDrift(), ctx.scenes.go("settings")) },
+        { kind: "action", label: "MAIN MENU", run: () => (this.clearDrift(), ctx.scenes.go("main", { fade: true })) },
       ],
       { style: "center", cx: WIDTH / 2, y: 70, rowH: 16 },
     );
@@ -180,6 +187,7 @@ export class GameScene implements Scene {
     this.mapOpen = false;
     this.fastTravel = null;
     this.chapterChange = null;
+    this.clearDrift();
     this.moment = null;
     this.conversation = null;
     this.banner = this.popup = null;
@@ -245,7 +253,9 @@ export class GameScene implements Scene {
   private resetRoom(): void {
     this.room.clearEchoes();
     this.level.doorsOpen = false;
+    this.level.mech.reset();
     this.history = [];
+    this.mechHistory = [];
     this.rewinding = null;
     this.rewindCooldown = 0;
   }
@@ -356,9 +366,18 @@ export class GameScene implements Scene {
     if (!p.dead && this.checkExit()) return;
     if (!p.dead) {
       this.history.push(p.snapshot());
-      if (this.history.length > HISTORY) this.history.shift();
+      this.mechHistory.push(this.level.mech.snapshot());
+      if (this.history.length > HISTORY) {
+        this.history.shift();
+        this.mechHistory.shift();
+      }
       this.checkCheckpoints();
       this.checkCollectibles();
+      const flower = this.level.mech.useFlower(p.hitbox, p.canDash);
+      if (flower >= 0) {
+        p.refillDash();
+        this.onFlowerUsed(flower);
+      }
     }
     if (p.dead && !wasDead) {
       this.respawnTimer = RESPAWN_DELAY;
@@ -375,7 +394,9 @@ export class GameScene implements Scene {
       }
     }
 
-    if (this.room.update(dt, p.hitbox)) this.ctx.sfx(this.level.doorsOpen ? "doorOpen" : "doorClose");
+    const roomStep = this.room.update(dt, p.hitbox, p.dead ? 0 : p.wallSide);
+    if (roomStep.doorsChanged) this.ctx.sfx(this.level.doorsOpen ? "doorOpen" : "doorClose");
+    this.onMechEvents(roomStep.events);
     this.fx.update(dt);
     this.shake = Math.max(0, this.shake - dt);
     this.updateCamera(dt);
@@ -492,7 +513,7 @@ export class GameScene implements Scene {
 
   // ------------------------------------------------------------------ rewind
   private startRewind(): void {
-    this.rewinding = { path: [...this.history].reverse(), t: 0 };
+    this.rewinding = { path: [...this.history].reverse(), mech: this.mechHistory[0], t: 0 };
     this.ctx.sfx("rewind");
   }
 
@@ -532,8 +553,12 @@ export class GameScene implements Scene {
       this.fx.burst(now.x + 4, Math.min(now.y, this.level.height - 4) + 6, 10, { colors: [COLORS.c, COLORS.C], speed: 30, life: 0.4 });
     }
 
+    // stones and flowers go back too, but never reform inside Iris (where she lands) or an echo
+    const landing = { x: past.x, y: past.y, w: p.hitbox.w, h: p.hitbox.h };
+    this.level.mech.restoreAfterRewind(rw.mech, [landing, ...this.room.echoes.map((e) => e.hitbox)]);
     p.restore(past);
     this.history = [];
+    this.mechHistory = [];
     this.rewinding = null;
     this.rewindCooldown = REWIND_COOLDOWN;
     this.slotsHud = SLOTS_HUD_TIME;
@@ -605,7 +630,9 @@ export class GameScene implements Scene {
     }
     this.renderDecor("back", camX, camY);
     this.level.render(draw, camX, camY, WIDTH, HEIGHT);
+    this.renderAir(camX, camY);
     this.renderDecor("mid", camX, camY);
+    this.level.renderMechanics(draw, camX, camY);
     this.level.renderCheckpoints(draw, camX, camY);
     this.renderEntities(camX, camY);
     for (const e of this.room.echoes) e.render(draw, camX, camY);
@@ -839,6 +866,97 @@ export class GameScene implements Scene {
       this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
     }
     if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
+  }
+
+  /** Feedback for crumble stones and regrowing flowers. */
+  private onMechEvents(events: MechEvent[]): void {
+    for (const e of events) {
+      if (e.kind === "regrow") {
+        const f = this.level.flowers[e.flower];
+        this.fx.burst(f.x, f.y, 4, { colors: [COLORS.M, COLORS.n], speed: 20, life: 0.3 });
+        continue;
+      }
+      const run = this.level.mech.runs[e.run].rect;
+      if (e.kind === "shake") {
+        this.ctx.sfx("crumbleShake");
+        this.fx.burst(run.x + run.w / 2, run.y, 3, { colors: [COLORS["3"], COLORS["4"]], speed: 20, life: 0.3, gravity: 200 });
+      } else if (e.kind === "fall") {
+        this.ctx.sfx("crumbleFall");
+        for (let x = run.x + 4; x < run.x + run.w; x += 8)
+          this.fx.burst(x, run.y + 8, 3, { colors: [COLORS["2"], COLORS["3"], COLORS["4"], COLORS.K], speed: 40, life: 0.7, gravity: 400 });
+      } else {
+        this.ctx.sfx("crumbleReform");
+        this.fx.burst(run.x + run.w / 2, run.y + 8, 5, { colors: [COLORS["4"], COLORS.g], speed: 25, life: 0.3 });
+      }
+    }
+    // Drift: entering muffles the music, leaving clears it
+    const inDrift = !this.player.dead && this.level.fieldAt(this.player.hitbox).gravity < 1;
+    if (inDrift !== this.inDrift) {
+      this.inDrift = inDrift;
+      this.ctx.audio.setFiltered(inDrift);
+      if (inDrift) this.ctx.sfx("driftIn");
+    }
+  }
+
+  /** Leaving play (menus, a new run): the music is never left muffled; the next game frame re-checks Drift. */
+  private clearDrift(): void {
+    this.inDrift = false;
+    this.ctx.audio.setFiltered(false);
+  }
+
+  /** Feedback for a flower just used: petals and a pop. */
+  private onFlowerUsed(index: number): void {
+    const f = this.level.flowers[index];
+    this.ctx.sfx("flower");
+    this.fx.burst(f.x, f.y, 10, { colors: [COLORS.P, COLORS.q, COLORS.p], speed: 45, life: 0.5, gravity: 60 });
+  }
+
+  /** The air you can see: rising streaks over vents; Drift zones' tint, shimmering outline and slow motes. */
+  private renderAir(camX: number, camY: number): void {
+    const { draw } = this.ctx;
+    const t = this.t;
+    for (const v of this.level.vents) {
+      // pale wisps of the gorge's wind curling up the column, and a few pebbles riding it
+      const cols = Math.max(1, Math.round(v.w / 16));
+      for (let c = 0; c < cols; c++) {
+        for (let i = 0; i < 5; i++) {
+          const seed = i * 41.3 + c * 17.7 + v.x;
+          const speed = 55 + (i % 3) * 15;
+          const len = 22;
+          const head = v.y + v.h - ((t * speed + seed * 9) % (v.h + len));
+          const cx = v.x + c * 16 + 8;
+          for (let k = 0; k < len; k += 2) {
+            const y = head + k;
+            if (y < v.y || y > v.y + v.h) continue;
+            const x = cx + Math.sin((y + seed) * 0.12 + t * 2) * (3 + (i % 2) * 2);
+            const fade = Math.min(1, (y - v.y) / 20) * (1 - k / len);
+            draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 2, COLORS.W, 0.5 * fade);
+          }
+        }
+        const py = v.y + v.h - ((t * 40 + c * 61 + v.x) % v.h);
+        const px = v.x + c * 16 + 8 + Math.sin(t * 3 + c) * 4;
+        draw.rect(Math.round(px - camX), Math.round(py - camY), 1, 1, COLORS.g, 0.8);
+      }
+    }
+    for (const d of this.level.drifts) {
+      draw.rect(Math.round(d.x - camX), Math.round(d.y - camY), d.w, d.h, COLORS.c, 0.12);
+      const off = Math.floor(t * 6) % 4;
+      for (let x = off; x < d.w; x += 4) {
+        draw.rect(Math.round(d.x + x - camX), Math.round(d.y - camY), 1, 1, COLORS.C, 0.55);
+        draw.rect(Math.round(d.x + d.w - 1 - x - camX), Math.round(d.y + d.h - 1 - camY), 1, 1, COLORS.C, 0.55);
+      }
+      for (let y = off; y < d.h; y += 4) {
+        draw.rect(Math.round(d.x + d.w - 1 - camX), Math.round(d.y + y - camY), 1, 1, COLORS.C, 0.55);
+        draw.rect(Math.round(d.x - camX), Math.round(d.y + d.h - 1 - y - camY), 1, 1, COLORS.C, 0.55);
+      }
+      const motes = Math.round((d.w * d.h) / 1600);
+      for (let i = 0; i < motes; i++) {
+        const seed = i * 71.3 + d.y;
+        const x = d.x + ((seed * 17.9) % d.w) + Math.sin(t * 0.8 + seed) * 4;
+        const y = d.y + ((t * (6 + (i % 4) * 2) + seed * 11) % d.h);
+        draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 1, COLORS.e, 0.6);
+      }
+    }
   }
 
   /**

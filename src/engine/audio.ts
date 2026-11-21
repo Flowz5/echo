@@ -3,6 +3,9 @@ import { Synth, noteFreq } from "../audio/synth";
 import { TRACKS, type TrackName } from "../audio/tracks";
 import type { Voice } from "../game/dialogue";
 
+const FILTER_HZ = 700;
+const FILTER_OPEN = 20000;
+
 export type SfxName =
   | "move"
   | "select"
@@ -22,7 +25,12 @@ export type SfxName =
   | "echoShatter"
   | "doorOpen"
   | "doorClose"
-  | "checkpoint";
+  | "checkpoint"
+  | "crumbleShake"
+  | "crumbleFall"
+  | "crumbleReform"
+  | "flower"
+  | "driftIn";
 
 /**
  * Audio graph: music bus + sfx bus -> compressor -> speakers.
@@ -36,6 +44,9 @@ export class AudioEngine {
   private musicBus: GainNode | null = null;
   private sfxBus: GainNode | null = null;
   private duck: GainNode | null = null;
+  /** low-pass on the music (Drift: the world sounds far away) */
+  private filter: BiquadFilterNode | null = null;
+  private filtered = false;
   private wantedTrack: TrackName | null = null;
   private musicVolume = 0.7;
   private sfxVolume = 0.8;
@@ -59,7 +70,10 @@ export class AudioEngine {
         this.musicBus = ac.createGain();
         this.duck = ac.createGain();
         this.sfxBus = ac.createGain();
-        this.musicBus.connect(this.duck).connect(comp);
+        this.filter = ac.createBiquadFilter();
+        this.filter.type = "lowpass";
+        this.filter.frequency.value = this.filtered ? FILTER_HZ : FILTER_OPEN;
+        this.musicBus.connect(this.filter).connect(this.duck).connect(comp);
         this.sfxBus.connect(comp);
         this.ac = ac;
         this.synth = new Synth(ac);
@@ -92,6 +106,13 @@ export class AudioEngine {
   playMusic(name: TrackName): void {
     this.wantedTrack = name;
     this.music?.play(TRACKS[name]);
+  }
+
+  /** Muffles the music (inside a Drift fracture), ramped over 0.1 s. */
+  setFiltered(on: boolean): void {
+    if (on === this.filtered) return;
+    this.filtered = on;
+    if (this.ac && this.filter) this.filter.frequency.setTargetAtTime(on ? FILTER_HZ : FILTER_OPEN, this.ac.currentTime, 0.04);
   }
 
   /** Lowers the music (pause menu). */
@@ -187,6 +208,23 @@ export class AudioEngine {
       case "echoShatter":
         s.noise(out, { t, dur: 0.25, gain: 0.35, type: "highpass", freq: 3000 });
         ["C7", "G6", "D7"].forEach((n, i) => s.tone(out, { freq: noteFreq(n), t: t + i * 0.025, dur: 0.08, wave: "pulse12", gain: 0.12 }));
+        break;
+      case "crumbleShake": // stone grinding
+        s.noise(out, { t, dur: 0.18, gain: 0.22, type: "bandpass", freq: 700, to: 500, q: 3 });
+        break;
+      case "crumbleFall":
+        s.noise(out, { t, dur: 0.3, gain: 0.35, type: "lowpass", freq: 1200, to: 150 });
+        s.tone(out, { freq: 140, to: 50, t, dur: 0.2, wave: "square", gain: 0.1 });
+        break;
+      case "crumbleReform":
+        s.tone(out, { freq: 300, to: 420, t, dur: 0.05, wave: "triangle", gain: 0.12 });
+        break;
+      case "flower": // a soft bright pop
+        s.tone(out, { freq: noteFreq("C6"), t, dur: 0.06, wave: "triangle", gain: 0.25 });
+        s.tone(out, { freq: noteFreq("G6"), t: t + 0.05, dur: 0.1, wave: "triangle", gain: 0.22, release: 0.08 });
+        break;
+      case "driftIn":
+        s.tone(out, { freq: noteFreq("E6"), t, dur: 0.3, wave: "triangle", gain: 0.12, release: 0.25 });
         break;
       case "doorOpen":
         s.tone(out, { freq: 110, to: 220, t, dur: 0.25, wave: "square", gain: 0.12 });

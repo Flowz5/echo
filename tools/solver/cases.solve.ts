@@ -3,6 +3,7 @@
  *
  *   npm run solve                                  # tools/solver/chapter0.cases.json
  *   SOLVE_CASES=path/to/cases.json npm run solve   # another list
+ *   SOLVE_WORLD=mechanics SOLVE_CASES=tools/solver/mechanics.cases.json SOLVE_TIME=180 npm run solve
  *
  * A case: [label, room, [tileX, feetRow], goal, abilities, expectedReached, avoid?]
  *   goal: {"kind":"tile","rect":[x0,y0,x1,y1]}  (hitbox inside those tiles)
@@ -21,6 +22,8 @@ import { solve, type Goal } from "./solver";
 type Case = [string, string, [number, number], Goal, Ability[], boolean, string[]?];
 const file = process.env.SOLVE_CASES ?? "tools/solver/chapter0.cases.json";
 const out = process.env.SOLVE_OUT ?? "solve-results.txt";
+/** seconds of search per case (SOLVE_TIME=180 for hard rooms) */
+const TIME = Number(process.env.SOLVE_TIME ?? 60);
 const cases = JSON.parse(readFileSync(file, "utf8")) as Case[];
 
 it(`reachability: ${file}`, () => {
@@ -28,7 +31,7 @@ it(`reachability: ${file}`, () => {
   const failed: string[] = [];
   for (const [label, roomName, from, goal, abilities, expected, avoid] of cases) {
     const t = Date.now();
-    const r = solve(roomName, from, goal, abilities, 400_000, 60, avoid ?? []);
+    const r = solve(roomName, from, goal, abilities, 2_000_000, TIME, avoid ?? []);
     const ok = r.reached === expected;
     if (!ok) failed.push(label);
     const detail = r.reached ? `end ${r.end?.x},${r.end?.y}  ${r.path}` : r.stopped;

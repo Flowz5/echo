@@ -4,12 +4,12 @@
  "tiledversion": "1.10.2",
  "name": "terrain",
  "image": "terrain.png",
- "imagewidth": 80,
+ "imagewidth": 96,
  "imageheight": 16,
  "tilewidth": 16,
  "tileheight": 16,
- "tilecount": 5,
- "columns": 5,
+ "tilecount": 6,
+ "columns": 6,
  "margin": 0,
  "spacing": 0,
  "tiles": [
@@ -32,6 +32,10 @@
   {
    "id": 4,
    "type": "door"
+  },
+  {
+   "id": 5,
+   "type": "crumble"
   }
  ]
 }

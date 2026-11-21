@@ -2,7 +2,7 @@ import { COLORS, manifest } from "../config";
 import type { SfxName } from "../engine/audio";
 import type { Draw } from "../engine/draw";
 import type { Input } from "../engine/input";
-import type { Rect } from "./level";
+import { DRIFT_FALL, DRIFT_GRAVITY, type Rect } from "./level";
 import type { Effects } from "./particles";
 import type { Ability } from "./progress";
 import type { Collider } from "./room";
@@ -12,6 +12,9 @@ import { Scarf } from "./scarf";
  * Movement tuning. Units: pixels and seconds. One tile = 16 px.
  * Tweak these to change the feel; everything else reads from here.
  */
+/** seconds for Drift's gravity change to blend in or out (SCRIPT.md §4.12) */
+export const DRIFT_BLEND = 0.1;
+
 export const TUNING = {
   // running
   runSpeed: 100,
@@ -141,6 +144,9 @@ export class Player {
   private runDistance = 0;
   private dustDistance = 0;
   private wallSliding = false;
+  /** Drift blend: current gravity and fall-cap multipliers (1 = normal air) */
+  private gravityFactor = 1;
+  private fallFactor = 1;
   private wallDir: -1 | 0 | 1 = 0; // wall touched last (for the wall coyote time)
   private wallCoyote = 0;
   private wallChain = 0; // time left in a wall-jump chain (chimneys)
@@ -189,6 +195,7 @@ export class Player {
     this.touchedSlide = false;
     this.voidTime = 0;
     this.power = 0;
+    this.gravityFactor = this.fallFactor = 1;
     this.scaleX = 0.6; // pop in
     this.scaleY = 1.4;
     const a = this.scarfWorldAnchor();
@@ -202,6 +209,17 @@ export class Player {
   /** Forgets a buffered jump (e.g. the key that closed a dialogue). */
   cancelJumpBuffer(): void {
     this.buffer = 0;
+  }
+
+  /** Gives the dash back, not the double jump (dash flowers). */
+  refillDash(): void {
+    if (!this.canDash) this.fx.burst(this.x + HB_W / 2, this.y + 4, 6, { colors: [COLORS.P, COLORS.q], speed: 35, life: 0.3 });
+    this.canDash = true;
+  }
+
+  /** The wall Iris is sliding down: -1 left, 1 right, 0 none. */
+  get wallSide(): -1 | 0 | 1 {
+    return this.wallSliding ? (this.wallDir as -1 | 1) : 0;
   }
 
   /** Gives the dash and double jump back (checkpoints, refills). */
@@ -480,15 +498,22 @@ export class Player {
   private updateGravity(dt: number, my: number): void {
     const T = TUNING;
     this.varJumpTimer = Math.max(0, this.varJumpTimer - dt);
+    // Drift blends in and out over DRIFT_BLEND s; vents lift directly
+    const field = this.level.fieldAt(this.hitbox);
+    // linear: the full change from normal air to Drift (or back) takes exactly DRIFT_BLEND s
+    this.gravityFactor = approach(this.gravityFactor, field.gravity, ((1 - DRIFT_GRAVITY) * dt) / DRIFT_BLEND);
+    this.fallFactor = approach(this.fallFactor, field.fall, ((1 - DRIFT_FALL) * dt) / DRIFT_BLEND);
     const apex = Math.abs(this.vy) < T.apexThreshold && this.jumpHeld;
-    const g = (this.vy < 0 ? T.gravityUp : T.gravityDown) * (apex ? T.apexGravityMult : 1);
+    const g = (this.vy < 0 ? T.gravityUp : T.gravityDown) * (apex ? T.apexGravityMult : 1) * this.gravityFactor;
     if (this.wallSliding) {
       // grab the wall: brake smoothly down to the slide speed
-      this.vy = this.vy > T.wallSlideSpeed ? approach(this.vy, T.wallSlideSpeed, T.wallSlideAccel * dt) : approach(this.vy, T.wallSlideSpeed, g * dt);
-      return;
+      const slide = T.wallSlideSpeed * this.fallFactor;
+      this.vy = this.vy > slide ? approach(this.vy, slide, T.wallSlideAccel * dt) : approach(this.vy, slide, g * dt);
+    } else {
+      const maxFall = (my > 0 ? T.fastFall : T.maxFall) * this.fallFactor;
+      this.vy = approach(this.vy, maxFall, g * dt);
     }
-    const maxFall = my > 0 ? T.fastFall : T.maxFall;
-    this.vy = approach(this.vy, maxFall, g * dt);
+    if (field.lift > 0 && this.vy > -field.liftCap) this.vy = Math.max(this.vy - field.lift * dt, -field.liftCap);
   }
 
   snapshot(): PlayerSnapshot {

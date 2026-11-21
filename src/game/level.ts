@@ -1,6 +1,7 @@
 import { TILE } from "../config";
 import type { Draw } from "../engine/draw";
 import type { CollectibleKind } from "./progress";
+import { Mechanics } from "./mechanics";
 
 /**
  * Tile legend:
@@ -9,6 +10,7 @@ import type { CollectibleKind } from "./progress";
  *   ^  spikes
  *   b  pressure plate (held down by Iris or an echo standing on it)
  *   D  door (solid while closed; stack two for a 2-tile door). Doors open while any plate is held
+ *   =  crumble stone (a horizontal run breaks as one slab when stood on; see mechanics.ts)
  *   P  player spawn (ASCII drafts only; Tiled rooms use "spawn" point objects)
  *   .  empty
  * Outside the room, edges lead into the neighbouring room when there is one (see World);
@@ -16,7 +18,34 @@ import type { CollectibleKind } from "./progress";
  *
  * Points (spawns, checkpoints) are "feet" positions: the bottom-centre of what stands there.
  */
-export type Tile = "#" | "-" | "^" | "b" | "D" | ".";
+export type Tile = "#" | "-" | "^" | "b" | "D" | "=" | ".";
+
+/** What the air does to Iris where she is: gravity and fall-cap multipliers (Drift), vent lift. */
+export interface Field {
+  gravity: number;
+  fall: number;
+  /** upward acceleration (px/s²) */
+  lift: number;
+  /** the lift never pushes faster up than this (px/s) */
+  liftCap: number;
+}
+/** frames in sprites/props.png */
+const PROP_CRUMBLE = 6;
+const PROP_BUD = 7;
+const PROP_BLOOM = 8;
+const PROP_VENT = 9;
+
+export const NEUTRAL_FIELD: Field = { gravity: 1, fall: 1, lift: 0, liftCap: 0 };
+export const DRIFT_GRAVITY = 0.45;
+export const DRIFT_FALL = 0.6;
+export const VENT_LIFT = 1700;
+export const VENT_CAP = 200;
+
+/** A dash flower (point = its centre). */
+export interface Flower {
+  x: number;
+  y: number;
+}
 
 export interface Rect {
   x: number;
@@ -77,6 +106,13 @@ export class Level {
   readonly entities: Entity[];
   /** chapter exits, as room-local rects */
   readonly exits: Exit[];
+  readonly flowers: Flower[];
+  /** wind vent air columns (the grate is the bottom edge) */
+  readonly vents: Rect[];
+  /** Drift fracture zones (low gravity) */
+  readonly drifts: Rect[];
+  /** crumble stones and flowers over time */
+  readonly mech: Mechanics;
   /** hand-placed (Tiled "deco" objects) + procedural decorations */
   decor: Decor[] = [];
   /** Looks up a tile outside this room, in world tile coords relative to this room (set by World). */
@@ -97,6 +133,9 @@ export class Level {
       checkpoints?: (Point & { kind?: Checkpoint["kind"] })[];
       entities?: Entity[];
       exits?: Exit[];
+      flowers?: Flower[];
+      vents?: Rect[];
+      drifts?: Rect[];
     } = {},
   ) {
     this.name = opts.name ?? "room";
@@ -123,6 +162,10 @@ export class Level {
     this.checkpoints = (opts.checkpoints ?? []).map((c) => ({ kind: "crystal" as const, ...c, active: false }));
     this.entities = opts.entities ?? [];
     this.exits = opts.exits ?? [];
+    this.flowers = opts.flowers ?? [];
+    this.vents = opts.vents ?? [];
+    this.drifts = opts.drifts ?? [];
+    this.mech = new Mechanics(Mechanics.findRuns(this.tiles), this.flowers);
   }
 
   /** Default spawn (first one). */
@@ -168,7 +211,22 @@ export class Level {
   }
 
   solidAt(r: Rect): boolean {
-    return this.overlapping(r, (t) => t === "#" || (t === "D" && !this.doorsOpen));
+    return this.overlapping(r, (t, tx, ty) => t === "#" || (t === "=" && this.mech.crumbleSolid(tx, ty)) || (t === "D" && !this.doorsOpen));
+  }
+
+  /** Drift if the rect's centre is in a zone; vent lift if it overlaps a column. */
+  fieldAt(r: Rect): Field {
+    if (this.vents.length === 0 && this.drifts.length === 0) return NEUTRAL_FIELD;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const drift = this.drifts.some((d) => cx >= d.x && cx < d.x + d.w && cy >= d.y && cy < d.y + d.h);
+    const vent = this.vents.some((v) => overlaps(r, v));
+    return {
+      gravity: drift ? DRIFT_GRAVITY : 1,
+      fall: drift ? DRIFT_FALL : 1,
+      lift: vent ? VENT_LIFT : 0,
+      liftCap: vent ? VENT_CAP : 0,
+    };
   }
 
   /** True if a rect whose bottom edge is at `bottom` stands exactly on a one-way platform. */
@@ -214,8 +272,30 @@ export class Level {
         else if (t === "-") draw.frame(draw.img.props, 5, sx, sy);
         else if (t === "b") draw.frame(draw.img.props, this.platesPressed[plate - 1] ? 2 : 1, sx, sy);
         else if (t === "D" && this.tile(tx, ty - 1) !== "D") draw.frame(draw.img.door, this.doorsOpen ? 1 : 0, sx, sy, { fh: 32 });
+        else if (t === "=") this.renderCrumble(draw, tx, ty, sx, sy);
       }
     }
+  }
+
+  /** Shaking: a 1-px jitter. Gone: a faint dotted outline where it will come back. */
+  private renderCrumble(draw: Draw, tx: number, ty: number, sx: number, sy: number): void {
+    const s = this.mech.crumbleState(tx, ty);
+    if (s.phase === "gone") {
+      for (let i = 0; i < TILE; i += 3) {
+        draw.rect(sx + i, sy, 2, 1, "#8a8aa8", 0.45);
+        draw.rect(sx + i, sy + TILE - 1, 2, 1, "#8a8aa8", 0.45);
+      }
+      return;
+    }
+    const jitter = s.phase === "shaking" ? (Math.floor(s.t * 40) % 2 ? 1 : -1) : 0;
+    draw.frame(draw.img.props, PROP_CRUMBLE, sx + jitter, sy);
+  }
+
+  /** Dash flowers and vent fissures. */
+  renderMechanics(draw: Draw, camX: number, camY: number): void {
+    this.flowers.forEach((f, i) => draw.frame(draw.img.props, this.mech.flowerOpen(i) ? PROP_BLOOM : PROP_BUD, Math.round(f.x - 8 - camX), Math.round(f.y - 8 - camY)));
+    // the fissure is cut into the top of the rock just under the air column
+    for (const v of this.vents) for (let x = v.x; x < v.x + v.w; x += TILE) draw.frame(draw.img.props, PROP_VENT, x - camX, v.y + v.h - camY);
   }
 
   /** Crystals and shrines: drawn after the decorations so nothing hides them. */

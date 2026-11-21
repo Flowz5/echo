@@ -28,8 +28,8 @@ import os
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "levels")
 TILE = 16
-GID = {"#": 1, "-": 2, "^": 3, "b": 4, "D": 5}  # firstgid 1 + tile id
-TILE_NAMES = ["ground", "platform", "spikes", "plate", "door"]
+GID = {"#": 1, "-": 2, "^": 3, "b": 4, "D": 5, "=": 6}  # firstgid 1 + tile id
+TILE_NAMES = ["ground", "platform", "spikes", "plate", "door", "crumble"]
 
 # ------------------------------------------------------------------ rooms
 # Each room: name, world position in tiles (x, y), max echoes, rows.
@@ -176,6 +176,12 @@ def room_map(room):
             "rotation": 0,
             "visible": True,
         }
+        if o.get("center"):  # a point at the tile's centre (flowers), not its bottom
+            obj["y"] = ty * TILE + TILE / 2
+        if "size" in o:  # a rectangle: `at` is its top-left tile, `size` in tiles
+            w_t, h_t = o["size"]
+            obj.update({"x": tx * TILE, "y": ty * TILE, "width": w_t * TILE, "height": h_t * TILE})
+            del obj["point"]
         if o.get("props"):
             obj["properties"] = [tiled_prop(k, v) for k, v in o["props"].items()]
         objects.append(obj)

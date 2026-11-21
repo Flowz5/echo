@@ -17,8 +17,8 @@ import sys
 
 LEVELS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "levels")
 TILE = 16
-SOLID = {1, 5}          # ground, door (closed)
-STANDABLE = {1, 2, 5}   # + one-way platform
+SOLID = {1, 5, 6}       # ground, door (closed), crumble stone (intact)
+STANDABLE = {1, 2, 5, 6}  # + one-way platform
 GROUNDED = {"spawn", "checkpoint", "shrine", "npc", "lingering"}
 HANGING = {"hanging_lantern", "vine", "vine_long", "cobweb", "stalactite"}
 SPRITES = json.load(open(os.path.join(LEVELS, "..", "sprites.json")))
@@ -149,6 +149,15 @@ def main(world):
             (problems if what == "wall" and side != "top" and n > 2 else notes).append(line)
 
         for o in r["objects"]:
+            if o["type"] in ("vent", "drift"):
+                x0, y0 = int(o["x"] // TILE), int(o["y"] // TILE)
+                if o["type"] == "vent" and any(solid_at(r, x, y0) for x in range(x0, x0 + max(1, int(o["width"] // TILE)))):
+                    problems.append(f"{r['name']}: vent at column {x0}: the top of its air column is inside a wall")
+                continue
+            if o["type"] == "flower":
+                if solid_at(r, int(o["x"] // TILE), int(o["y"] // TILE)):
+                    problems.append(f"{r['name']}: flower at ({int(o['x'] // TILE)},{int(o['y'] // TILE)}) is inside a wall")
+                continue
             tx, ty = int(o["x"] // TILE), int(o["y"] // TILE)  # tile under the feet
             here = tile(r, tx, ty - 1) if 0 < ty <= r["h"] else 0
             below = tile(r, tx, ty) if ty < r["h"] else 0
