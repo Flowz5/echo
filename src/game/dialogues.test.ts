@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lingeringLine, quillFirst, quillRepeat, tamsinFirst, tamsinRepeat } from "./dialogues";
+import { NPC_DIALOGUES, lingeringLine, quillFirst, quillRepeat, tamsinFirst, tamsinRepeat } from "./dialogues";
 
 describe("chapter 0 scripts", () => {
   it("Tamsin wakes Iris and offers NOD / TILT HEAD", () => {
@@ -30,5 +30,17 @@ describe("chapter 0 scripts", () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].speaker.portrait).toBeNull();
     expect(lines[0].speaker.voice).toBe("lingering");
+  });
+});
+
+describe("chapter 1 scripts", () => {
+  it("Quill at his perch reveals the chapter 1 map whatever Iris answers", () => {
+    const quill = NPC_DIALOGUES.quill_ch1;
+    const lines = quill.first();
+    expect(lines[0].speaker.name).toBe("QUILL");
+    const choice = lines.find((l) => l.choices);
+    expect(choice?.choices?.length).toBe(2);
+    for (const c of choice!.choices!) expect(c.effect).toBe("revealMap");
+    expect(quill.repeat()[0].text).not.toBe(NPC_DIALOGUES.QUILL.repeat()[0].text);
   });
 });

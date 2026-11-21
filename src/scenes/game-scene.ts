@@ -56,6 +56,7 @@ const UNLOCK_TEXT: Record<string, { title: string; hint: (keys: Record<string, s
   doubleJump: { title: "DOUBLE JUMP", hint: (k) => `PRESS ${k.jump} AGAIN IN THE AIR` },
   wallJump: { title: "WALL JUMP", hint: () => "JUMP WHILE SLIDING DOWN A WALL" },
   echo: { title: "ONE MORE ECHO", hint: () => "YOUR EYE CAN HOLD ANOTHER MOMENT" },
+  light: { title: "SHARD OF LIGHT", hint: () => "A WARM GLOW IN THE DARK" },
 };
 
 interface Rewinding {
@@ -711,7 +712,7 @@ export class GameScene implements Scene {
     if (e.kind === "lingering") {
       lines = lingeringLine(String(e.props.text ?? "..."));
     } else {
-      const script = NPC_DIALOGUES[String(e.props.name ?? "")];
+      const script = NPC_DIALOGUES[String(e.props.script ?? e.props.name ?? "")];
       if (!script) return;
       lines = this.talked.has(e.key) ? script.repeat() : script.first();
       this.talked.add(e.key);

@@ -626,6 +626,18 @@ At the end, Corin falls to his knees beside the Bell. He doesn't fight anymore.
 **QUILL** (map): Here. Everything I've drawn so far. If you find any loose pages lying about, bring them. Paper is precious.
 **SYSTEM:** MAP UPDATED.
 
+**Chapter 1, Quill's Perch (1-8)** ✅
+**QUILL:** You climbed up here? Without a rope? I used four ropes. And a ladder. And a small prayer.
+**QUILL:** The Tollers built their whole town on bridges. Half of them are still here. The other half are… down.
+**QUILL:** Past the shrine the road splits. One goes over the roofs, one goes under the bridges.
+> HOW DO YOU MAP WHAT FELL?
+> SHOW ME THE MAP
+
+**QUILL** (fell): Dotted lines. A dotted line means "it was here, once". My maps are getting very dotted.
+**QUILL** (both): There. Both roads, and where they meet again. Mind the gaps. I drew them bigger than they are. On purpose.
+**SYSTEM:** MAP UPDATED.
+**QUILL** (repeat): If the wind picks you up, don't fight it. Dash out at the top. That's what the birds do. I assume.
+
 **Chapter 3, the Archive**
 **QUILL:** These journals… they're Corin Vael's. The Head Toller.
 **QUILL:** "She asked me if the morning would be bright. I couldn't tell her she wouldn't see it."
