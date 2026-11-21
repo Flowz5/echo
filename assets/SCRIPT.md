@@ -256,8 +256,8 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 - **INVINCIBLE:** ON / OFF (spikes and void respawn you at the last safe spot)
 - **REWIND WINDOW:** 2 / 3 / 4 s
 
-### 4.9 Map & fast travel
-**Opening the map:** MAP key (default **M**, rebindable) or **PAUSE → MAP**.
+### 4.9 Map & fast travel ✅ (chapter view, Quill's reveal, fast travel; world view, pins, collectible dots and gate locks to come)
+**Opening the map:** MAP key (default **C**, rebindable) or **PAUSE → MAP**. Built: rooms drawn to scale (2 px per tile) as terrain silhouettes once visited, outlines once Quill revealed them; shrine, crystal (bright when lit) and NPC icons; Iris's Eye blinks where she is; arrows pan.
 
 **Two zoom levels**
 - **World view:** the whole valley as a vertical cross-section, from Lanternrest at the bottom to the Belltower at the top. Each chapter shows its completion (shards, notes, pages, moments, quests).
@@ -282,7 +282,8 @@ Under SETTINGS → ASSIST (no penalty, no lock):
 | Iris's Eye | You are here |
 
 **Fast travel**
-- Unlocked at the **Ruins Shrine** (chapter 1), when Tamsin realises "the bells can carry *you* too, child".
+- Planned: unlocked at the **Ruins Shrine** (chapter 1), when Tamsin realises "the bells can carry *you* too, child". **For now it is available from the start** (chapter 0 has 3 shrines; handy to fetch the 0-9 page with the dash).
+- Built: open the map while standing at a lit shrine, LEFT/RIGHT picks another lit shrine, JUMP travels (bell chime, cyan fade out and in, the game saves at the destination).
 - Works from **any Bell Shrine** to **any visited shrine** or **Lanternrest**: open the map at a shrine, pick a bell, confirm.
 - Short transition: Iris rings the shrine bell, dissolves into cyan light, and reappears at the other shrine as the bell there answers.
 - Fast travel is never available mid-room or during chase sequences.
@@ -919,6 +920,7 @@ CONTROLS
   DASH                         L-SHIFT
   REWIND                       R
   INTERACT                     E (talk to people, later other things)
+  MAP                          C
   PAUSE                        ESC
   RESET TO DEFAULT
   BACK
@@ -929,7 +931,7 @@ PRESS A KEY...      (while rebinding)
 ```
 PAUSED
   > RESUME
-    MAP          (planned)
+    MAP
     JOURNAL      (planned: side quests, collectibles, Lost Pages)
     RESTART ROOM
     SETTINGS
