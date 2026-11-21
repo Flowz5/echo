@@ -49,6 +49,7 @@ export const TUNING = {
   dashUpEndSpeed: 110, // upward speed kept after an upward dash
   dashCooldown: 0.18,
   dashFreeze: 0.02,
+  dashJumpGrace: 0.1, // a jump this long after a ground dash ends is still a dash jump
   afterimageEvery: 0.03,
 
   // walls
@@ -132,6 +133,8 @@ export class Player {
   private dashCooldown = 0;
   private dashDirX = 0;
   private dashDirY = 0;
+  private dashGrounded = false; // the dash started on (or touched) the ground: its jump is a free one
+  private dashJumpTimer = 0; // time left after a ground dash to still dash jump
   private afterimageTimer = 0;
   private dropTimer = 0;
   private animTime = 0;
@@ -179,7 +182,8 @@ export class Player {
     this.facing = 1;
     this.dead = false;
     this.canDash = this.canDoubleJump = true;
-    this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = 0;
+    this.dashTimer = this.dashCooldown = this.buffer = this.coyote = this.varJumpTimer = this.dashJumpTimer = 0;
+    this.dashGrounded = false;
     this.wallSliding = false;
     this.wallCoyote = this.forceMoveTimer = this.softLockTimer = this.wallChain = 0;
     this.touchedSlide = false;
@@ -232,6 +236,7 @@ export class Player {
     this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     this.dropTimer = Math.max(0, this.dropTimer - dt);
     this.coyote = Math.max(0, this.coyote - dt);
+    this.dashJumpTimer = Math.max(0, this.dashJumpTimer - dt);
     this.wallCoyote = Math.max(0, this.wallCoyote - dt);
     this.wallChain = Math.max(0, this.wallChain - dt);
     if (this.forceMoveTimer > 0 && this.forceMoveTimer - dt <= 0) this.softLockTimer = TUNING.wallJumpSoftLock;
@@ -256,7 +261,9 @@ export class Player {
 
     if (this.dashing) {
       this.wallSliding = false;
+      if (this.grounded && !this.dashStraightUp) this.dashGrounded = true;
       this.updateDash(dt);
+      if (this.buffer > 0) this.jumpOutOfDash(mx);
     } else {
       if (this.forceMoveTimer > 0) mx = this.forceMoveDir; // just kicked off a wall
       this.updateWalls(dt, mx);
@@ -384,6 +391,8 @@ export class Player {
       if (onPlatform) {
         this.dropTimer = T.platformDropTime; // down + jump drops through one-way platforms
         this.buffer = 0;
+      } else if (this.dashGrounded && this.dashJumpTimer > 0) {
+        this.dashJump();
       } else if (this.coyote > 0 && !this.wallSliding) {
         this.jump(T.jumpSpeed, T.varJumpTime);
         this.vx += Math.sign(this.vx) * T.jumpHBoost * Math.min(1, Math.abs(this.vx) / T.runSpeed);
@@ -393,17 +402,7 @@ export class Player {
       } else if (this.wallCoyote > 0 && this.wantsWallJump()) {
         this.wallJump(mx);
       } else if (this.canDoubleJump && this.can("doubleJump")) {
-        this.canDoubleJump = false;
-        this.jump(T.doubleJumpSpeed, T.doubleVarJumpTime);
-        this.sound("doubleJump");
-        this.stretch(0.75, 1.3);
-        this.fx.burst(this.x + HB_W / 2, this.y + HB_H, 10, {
-          colors: [COLORS.P, COLORS.q, COLORS.W],
-          speed: 70,
-          angle: Math.PI / 2,
-          spread: Math.PI * 0.8,
-          life: 0.35,
-        });
+        this.doubleJump();
       }
     }
     // sustain the take-off speed while jump is held
@@ -411,6 +410,66 @@ export class Player {
       if (this.jumpHeld) this.vy = Math.min(this.vy, -this.varJumpSpeed);
       else this.varJumpTimer = 0;
     }
+  }
+
+  private doubleJump(): void {
+    const T = TUNING;
+    this.canDoubleJump = false;
+    this.jump(T.doubleJumpSpeed, T.doubleVarJumpTime);
+    this.sound("doubleJump");
+    this.stretch(0.75, 1.3);
+    this.fx.burst(this.x + HB_W / 2, this.y + HB_H, 10, {
+      colors: [COLORS.P, COLORS.q, COLORS.W],
+      speed: 70,
+      angle: Math.PI / 2,
+      spread: Math.PI * 0.8,
+      life: 0.35,
+    });
+  }
+
+  private get dashStraightUp(): boolean {
+    return this.dashDirX === 0 && this.dashDirY < 0;
+  }
+
+  /**
+   * A jump during a dash fires at once and keeps the dash's speed. After a ground
+   * dash it is a free jump (the double jump stays); in the air it is a wall jump
+   * next to a wall, otherwise the double jump.
+   */
+  private jumpOutOfDash(mx: number): void {
+    if (this.dashGrounded) {
+      this.dashJump();
+      return;
+    }
+    if (this.can("wallJump")) {
+      const right = this.level.solidAt({ ...this.hitbox, x: this.x + TUNING.wallCheck });
+      const left = this.level.solidAt({ ...this.hitbox, x: this.x - TUNING.wallCheck });
+      if (right || left) {
+        this.wallDir = right && (!left || this.dashDirX >= 0) ? 1 : -1;
+        this.dashTimer = 0;
+        this.wallJump(mx);
+        return;
+      }
+    }
+    if (this.canDoubleJump && this.can("doubleJump")) {
+      const vx = this.vx;
+      this.dashTimer = 0;
+      this.doubleJump();
+      this.vx = vx;
+    }
+  }
+
+  /** The jump out of a ground dash: a normal jump that keeps the dash's horizontal speed. */
+  private dashJump(): void {
+    const T = TUNING;
+    const vx = this.vx;
+    this.dashTimer = this.dashJumpTimer = 0;
+    this.dashGrounded = false;
+    this.jump(T.jumpSpeed, T.varJumpTime);
+    this.vx = vx;
+    this.dust(6);
+    this.sound("jump");
+    this.stretch(0.7, 1.35);
   }
 
   private updateGravity(dt: number, my: number): void {
@@ -454,6 +513,8 @@ export class Player {
     this.canDash = s.canDash;
     this.canDoubleJump = s.canDoubleJump;
     this.dashTimer = this.varJumpTimer = this.buffer = this.forceMoveTimer = this.wallCoyote = 0;
+    this.coyote = this.dashJumpTimer = 0;
+    this.dashGrounded = false;
     this.wallSliding = false;
     this.dead = false;
     this.voidTime = 0;
@@ -476,6 +537,8 @@ export class Player {
     const len = Math.hypot(dx, dy);
     this.dashDirX = dx / len;
     this.dashDirY = dy / len;
+    this.dashGrounded = (this.grounded || this.coyote > 0) && !this.dashStraightUp;
+    this.dashJumpTimer = 0;
     this.vx = this.dashDirX * T.dashSpeed;
     this.vy = this.dashDirY * T.dashSpeed;
     this.dashTimer = T.dashTime;
@@ -485,7 +548,6 @@ export class Player {
     this.freeze = T.dashFreeze;
     this.sound("dash");
     this.afterimageTimer = 0;
-    this.buffer = 0;
     if (dx !== 0) this.facing = Math.sign(dx) as 1 | -1;
     // stretch along the dash direction
     const horiz = Math.abs(this.dashDirX);
@@ -514,6 +576,7 @@ export class Player {
       this.fx.afterimage(this.x + SPRITE_OX, this.y + SPRITE_OY, this.frame(), this.facing < 0);
     }
     if (this.dashTimer <= 0) {
+      if (this.dashGrounded) this.dashJumpTimer = T.dashJumpGrace;
       // hand momentum back to normal movement smoothly
       if (Math.abs(this.vx) > T.dashEndSpeed) this.vx = Math.sign(this.vx) * T.dashEndSpeed;
       if (this.vy < -T.dashUpEndSpeed) this.vy = -T.dashUpEndSpeed;
