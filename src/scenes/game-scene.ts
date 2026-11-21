@@ -10,12 +10,16 @@ import { Player, TUNING, type PlayerSnapshot } from "../game/player";
 import { Room } from "../game/room";
 import type { SaveData } from "../game/save";
 import { World, type RoomDef } from "../game/world";
+import { travelTargets, shrineKey, type ShrineSpot } from "../game/map";
 import { drawDialogueBox } from "../ui/dialogue-box";
+import { MapScreen } from "../ui/map-screen";
 import { OptionList } from "../ui/option-list";
 import type { Ctx, Scene, ScreenName } from "./scene";
 
 /** chapter to load: chapter0 by default, or ?world=playground for the movement test rooms */
 const WORLD = new URLSearchParams(location.search).get("world") ?? "chapter0";
+const CHAPTER_TITLES: Record<string, string> = { chapter0: "THE QUIET VALE" };
+const TRAVEL_FADE = 0.35; // s, each way
 const RESPAWN_DELAY = 0.5;
 const CAMERA_LERP_X = 7; // higher = snappier
 const CAMERA_LERP_Y = 4.5;
@@ -90,6 +94,12 @@ export class GameScene implements Scene {
   private readonly talked = new Set<string>();
   /** rooms entered at least once this save (for the map) */
   private readonly visited = new Set<string>();
+  /** chapters whose whole map Quill revealed */
+  private readonly revealed = new Set<string>();
+  private readonly map: MapScreen;
+  private mapOpen = false;
+  /** fast travel in progress: fading out, then in at the destination */
+  private fastTravel: { t: number; target: ShrineSpot; arrived: boolean } | null = null;
   /** seconds of actual play on this save */
   private playTime = 0;
   private debug = false;
@@ -108,10 +118,12 @@ export class GameScene implements Scene {
     this.room = new Room(this.current.level, this.current.maxEchoes);
     this.respawnPoint = this.current.level.spawn;
     this.player = new Player(this.room, this.fx, (name) => ctx.sfx(name), (a) => this.progress.has(a));
+    this.map = new MapScreen(ctx.draw, this.world.rooms, CHAPTER_TITLES[WORLD] ?? WORLD.toUpperCase());
     this.pauseMenu = new OptionList(
       ctx,
       [
         { kind: "action", label: "RESUME", run: () => this.setPaused(false) },
+        { kind: "action", label: "MAP", run: () => this.openMap() },
         { kind: "action", label: "RESTART ROOM", run: () => this.restartRoom() },
         { kind: "action", label: "SETTINGS", run: () => ctx.scenes.go("settings") },
         { kind: "action", label: "MAIN MENU", run: () => ctx.scenes.go("main", { fade: true }) },
@@ -141,6 +153,9 @@ export class GameScene implements Scene {
     this.lastCheckpoint.clear();
     this.talked.clear();
     this.visited.clear();
+    this.revealed.clear();
+    this.mapOpen = false;
+    this.fastTravel = null;
     this.conversation = null;
     this.banner = this.popup = null;
     this.playTime = save?.playTime ?? 0;
@@ -157,6 +172,7 @@ export class GameScene implements Scene {
     for (const [room, point] of Object.entries(save.lastCheckpoint)) this.lastCheckpoint.set(room, point);
     for (const key of save.talked) this.talked.add(key);
     for (const name of save.visited) this.visited.add(name);
+    for (const chapter of save.revealed ?? []) this.revealed.add(chapter);
     const room = this.world.rooms.find((r) => r.name === save.room);
     this.setRoom(room ?? this.world.startRoom); // a room removed since the save: back to the start
     this.respawnPoint = room ? save.point : this.level.spawn;
@@ -179,6 +195,7 @@ export class GameScene implements Scene {
       lastCheckpoint: Object.fromEntries(this.lastCheckpoint),
       talked: [...this.talked],
       visited: [...this.visited],
+      revealed: [...this.revealed],
       playTime: Math.round(this.playTime),
       savedAt: Date.now(),
     };
@@ -233,6 +250,16 @@ export class GameScene implements Scene {
       return;
     }
     this.playTime += dt;
+    if (this.fastTravel) {
+      this.updateFastTravel(dt);
+      return;
+    }
+    if (this.mapOpen) {
+      const r = this.map.update(dt, input);
+      if (r && "travel" in r) this.startFastTravel(r.travel);
+      else if (r) this.closeMap();
+      return;
+    }
     if (this.conversation) {
       this.updateConversation(dt);
       return;
@@ -275,6 +302,10 @@ export class GameScene implements Scene {
     const target = this.talkTarget();
     if (target && input.justPressed("interact")) {
       this.openConversation(target);
+      return;
+    }
+    if (input.justPressed("map") && !p.dead) {
+      this.openMap();
       return;
     }
 
@@ -555,6 +586,11 @@ export class GameScene implements Scene {
     this.renderBanner();
     if (this.debug) this.renderDebug(camX, camY);
     if (this.conversation) drawDialogueBox(draw, this.conversation, this.t);
+    if (this.mapOpen) this.map.render(this.t);
+    if (this.fastTravel) {
+      const k = this.fastTravel.t / TRAVEL_FADE;
+      draw.rect(0, 0, WIDTH, HEIGHT, COLORS.e, Math.max(0, Math.min(1, k < 1 ? k : 2 - k)) * 0.9);
+    }
 
     if (this.paused) {
       draw.rect(0, 0, WIDTH, HEIGHT, C.void, 0.6);
@@ -623,9 +659,86 @@ export class GameScene implements Scene {
     if (conv.update(dt).blip) this.ctx.audio.blip(conv.line.speaker.voice);
     if (conv.done) {
       this.conversation = null;
+      if (conv.effects.includes("revealMap") && !this.revealed.has(WORLD)) {
+        this.revealed.add(WORLD);
+        this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+      }
       this.ctx.audio.setDucked(false);
       this.player.cancelJumpBuffer();
     }
+  }
+
+  // ------------------------------------------------------------------ map & fast travel
+  private shrines(): ShrineSpot[] {
+    const out: ShrineSpot[] = [];
+    for (const r of this.world.rooms)
+      r.level.checkpoints.forEach((c, i) => c.kind === "shrine" && out.push({ room: r.name, index: i, x: r.x + c.x, y: r.y + c.y }));
+    return out;
+  }
+
+  private litCheckpoints(): Set<string> {
+    const lit = new Set<string>();
+    for (const r of this.world.rooms) r.level.checkpoints.forEach((c, i) => c.active && lit.add(`${r.name}:${i}`));
+    return lit;
+  }
+
+  /** The shrine Iris stands at (alive and on the ground), if any. */
+  private shrineHere(): string | null {
+    const p = this.player;
+    if (p.dead || !p.grounded) return null;
+    const i = this.level.checkpoints.findIndex((c) => c.kind === "shrine" && overlaps(p.hitbox, Level.checkpointRect(c)));
+    return i >= 0 ? shrineKey({ room: this.current.name, index: i }) : null;
+  }
+
+  private openMap(): void {
+    this.setPaused(false);
+    const lit = this.litCheckpoints();
+    const here = this.shrineHere();
+    const targets = here ? travelTargets(this.shrines(), lit, here) : [];
+    const keys = this.keyLabels();
+    this.map.open({
+      visited: this.visited,
+      revealed: this.revealed.has(WORLD),
+      lit,
+      player: { x: this.current.x + this.player.x + 4, y: this.current.y + this.player.y + 12 },
+      currentRoom: this.current.name,
+      travel: targets.length > 0 ? targets : null,
+      keys: { map: keys.map, jump: keys.jump },
+    });
+    this.mapOpen = true;
+    this.ctx.audio.setDucked(true);
+    this.ctx.sfx("pause");
+  }
+
+  private closeMap(): void {
+    this.mapOpen = false;
+    this.ctx.audio.setDucked(false);
+    this.ctx.sfx("back");
+    this.player.cancelJumpBuffer();
+  }
+
+  private startFastTravel(target: ShrineSpot): void {
+    this.mapOpen = false;
+    this.fastTravel = { t: 0, target, arrived: false };
+    this.ctx.sfx("checkpoint"); // the shrine bell rings
+  }
+
+  private updateFastTravel(dt: number): void {
+    const ft = this.fastTravel!;
+    ft.t += dt;
+    if (!ft.arrived && ft.t >= TRAVEL_FADE) {
+      ft.arrived = true;
+      const room = this.world.rooms.find((r) => r.name === ft.target.room)!;
+      const point = { x: ft.target.x - room.x, y: ft.target.y - room.y };
+      this.setRoom(room);
+      this.respawnPoint = point;
+      this.lastCheckpoint.set(room.name, point);
+      this.restartRoom();
+      this.ctx.audio.setDucked(false);
+      this.ctx.sfx("checkpoint"); // the bell there answers
+      this.ctx.saves.write(this.ctx.session.slot, this.buildSave());
+    }
+    if (ft.t >= TRAVEL_FADE * 2) this.fastTravel = null;
   }
 
   private renderEntities(camX: number, camY: number): void {
