@@ -916,13 +916,26 @@ export class GameScene implements Scene {
     const { draw } = this.ctx;
     const t = this.t;
     for (const v of this.level.vents) {
-      const n = Math.max(4, Math.round((v.w / 16) * 6));
-      for (let i = 0; i < n; i++) {
-        const seed = i * 53.7 + v.x;
-        const h = v.h - 6;
-        const y = v.y + v.h - 6 - ((t * (90 + (i % 3) * 25) + seed * 7) % h);
-        const x = v.x + 2 + ((seed * 13.1) % (v.w - 4));
-        draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 6, COLORS.W, 0.5 * Math.min(1, (y - v.y) / 24));
+      // pale wisps of the gorge's wind curling up the column, and a few pebbles riding it
+      const cols = Math.max(1, Math.round(v.w / 16));
+      for (let c = 0; c < cols; c++) {
+        for (let i = 0; i < 5; i++) {
+          const seed = i * 41.3 + c * 17.7 + v.x;
+          const speed = 55 + (i % 3) * 15;
+          const len = 22;
+          const head = v.y + v.h - ((t * speed + seed * 9) % (v.h + len));
+          const cx = v.x + c * 16 + 8;
+          for (let k = 0; k < len; k += 2) {
+            const y = head + k;
+            if (y < v.y || y > v.y + v.h) continue;
+            const x = cx + Math.sin((y + seed) * 0.12 + t * 2) * (3 + (i % 2) * 2);
+            const fade = Math.min(1, (y - v.y) / 20) * (1 - k / len);
+            draw.rect(Math.round(x - camX), Math.round(y - camY), 1, 2, COLORS.W, 0.5 * fade);
+          }
+        }
+        const py = v.y + v.h - ((t * 40 + c * 61 + v.x) % v.h);
+        const px = v.x + c * 16 + 8 + Math.sin(t * 3 + c) * 4;
+        draw.rect(Math.round(px - camX), Math.round(py - camY), 1, 1, COLORS.g, 0.8);
       }
     }
     for (const d of this.level.drifts) {

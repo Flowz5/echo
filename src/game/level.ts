@@ -291,10 +291,11 @@ export class Level {
     draw.frame(draw.img.props, PROP_CRUMBLE, sx + jitter, sy);
   }
 
-  /** Dash flowers and vent grates. */
+  /** Dash flowers and vent fissures. */
   renderMechanics(draw: Draw, camX: number, camY: number): void {
     this.flowers.forEach((f, i) => draw.frame(draw.img.props, this.mech.flowerOpen(i) ? PROP_BLOOM : PROP_BUD, Math.round(f.x - 8 - camX), Math.round(f.y - 8 - camY)));
-    for (const v of this.vents) for (let x = v.x; x < v.x + v.w; x += TILE) draw.frame(draw.img.props, PROP_VENT, x - camX, v.y + v.h - TILE - camY);
+    // the fissure is cut into the top of the rock just under the air column
+    for (const v of this.vents) for (let x = v.x; x < v.x + v.w; x += TILE) draw.frame(draw.img.props, PROP_VENT, x - camX, v.y + v.h - camY);
   }
 
   /** Crystals and shrines: drawn after the decorations so nothing hides them. */

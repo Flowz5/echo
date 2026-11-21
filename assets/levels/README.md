@@ -42,7 +42,7 @@ Place **point objects** (Insert Point, shortcut `I`) and set their **Class** in 
 | `checkpoint` | An **Echo Crystal**. Place the point on the ground (the crystal's base). Touching it makes it the respawn point, refills the dash and double jump, and keeps the collectibles picked up since the last checkpoint |
 | `shrine` | A **Bell Shrine** (on the ground). Works like a checkpoint for now; later: saving and fast travel |
 | `flower` | A **dash flower** (chapter 1). A point at the flower's centre. Touching it with the dash spent gives the dash back (not the double jump); it regrows after 2.5 s |
-| `vent` | A **wind vent** (chapter 1). A rectangle: the air column, with the grate on its bottom edge. Iris rises inside it (up to 200 px/s); dashing ignores it |
+| `vent` | A **wind vent** (chapter 1). A rectangle: the air column, rising from a fissure in the rock just under its bottom edge (so put ground right below it). Iris rises inside it (up to 200 px/s); dashing ignores it |
 | `drift` | A **Drift fracture** (chapter 1). A rectangle: inside, gravity ×0.45 and falls ×0.6 (jumps go about twice as high) |
 | `exit` | A **chapter exit**. Properties `chapter` (string, e.g. `chapter1`) and `room` (string, a room of that chapter), optional `spawn` (int, which spawn of that room Iris arrives on, default 0). A point marks the whole column it stands in, top to bottom; a rectangle marks just its area. Put it against the room edge, and make sure the arrival spawn is not on the other side's exit (`tools/check_world.py` checks it). Room names must be unique across all chapters |
 | `shard` | A **Bell Shard**. Property `unlocks` (string): `dash`, `rewind`, `doubleJump`, `wallJump` or `echo` (+1 echo slot). Kept immediately, shows a tutorial banner |

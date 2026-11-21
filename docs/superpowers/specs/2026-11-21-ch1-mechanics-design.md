@@ -100,8 +100,9 @@ the Drift fracture**. This project builds them, tuned and testable, before any c
   against gravity, capped so upward speed in the column never exceeds **200 px/s**. Net effect: Iris rises
   steadily to the top of the column and bobs there. Leaving the column (or dashing) drops the effect at once.
   Exact numbers are the builder's to tune in the playground; the shape (rise, cap, dash cancels) is fixed.
-- Look: a grate sprite at the bottom, faint rising streak particles over the whole column (always visible,
-  so the column's height is readable), a soft looping whoosh while inside.
+- Look (changed after the user's review: a metal grate didn't fit the game): a fissure cut into the rock under
+  the column, pale wisps of the gorge's wind curling up the whole column (always visible, so its height is
+  readable) and a few pebbles riding it; a soft looping whoosh while inside (deferred).
 - Echoes are frozen: vents don't move them.
 
 ### Drift fracture — object `drift`

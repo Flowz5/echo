@@ -438,24 +438,25 @@ FLOWER_BLOOM = [
     ".......M........",
     "................",
 ]
-# wind vent grate (chapter 1): sits on the bottom edge of the air column
+# wind vent (chapter 1): a fissure in the rock the gorge's wind breathes out of.
+# Drawn over the top of the ground tile just under the air column.
 VENT = [
+    "....KKKKKKKK....",
+    "....K111111K....",
+    ".....K1111K.....",
+    ".....K1111K.....",
+    "......K11K......",
+    "......K11K......",
+    ".....K11K.......",
+    ".....K1K........",
+    "......K1K.......",
+    ".......K1K......",
+    ".......KK.......",
     "................",
     "................",
     "................",
     "................",
     "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "KKKKKKKKKKKKKKKK",
-    "KgGgGgGgGgGgGgGK",
-    "KGKGKGKGKGKGKGKK",
-    "KgGgGgGgGgGgGgGK",
-    "KGGGGGGGGGGGGGGK",
-    "KKKKKKKKKKKKKKKK",
 ]
 
 
