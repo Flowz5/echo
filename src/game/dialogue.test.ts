@@ -93,6 +93,16 @@ describe("conversation", () => {
     expect(c.line.text).toBe("OK.");
   });
 
+  it("a choice can carry an effect, recorded when it is picked", () => {
+    const c = new Conversation([
+      { speaker: A, text: "MAP?", choices: [{ label: "NO", reply: [say("OK.")] }, { label: "YES", reply: [say("HERE.")], effect: "revealMap" }] },
+    ]);
+    run(c, 1);
+    c.move(1);
+    c.confirm();
+    expect(c.effects).toEqual(["revealMap"]);
+  });
+
   it("skip ends the conversation", () => {
     const c = new Conversation([say("ONE"), say("TWO")]);
     c.skip();

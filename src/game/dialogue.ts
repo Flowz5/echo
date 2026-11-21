@@ -18,6 +18,8 @@ export interface Choice {
   label: string;
   /** lines played right after this choice */
   reply: Line[];
+  /** something the game should do once this choice is picked (e.g. "revealMap") */
+  effect?: string;
 }
 
 export interface Line {
@@ -35,6 +37,8 @@ const isLetter = (ch: string) => /[A-Z0-9]/i.test(ch);
 export class Conversation {
   /** highlighted choice on a choice line */
   choice = 0;
+  /** effects of the choices picked so far, for the game to apply */
+  readonly effects: string[] = [];
   private readonly lines: Line[];
   private index = 0;
   private typed = 0;
@@ -88,7 +92,10 @@ export class Conversation {
       return;
     }
     const picked = this.line.choices?.[this.choice];
-    if (picked) this.lines.splice(this.index + 1, 0, ...picked.reply);
+    if (picked) {
+      this.lines.splice(this.index + 1, 0, ...picked.reply);
+      if (picked.effect) this.effects.push(picked.effect);
+    }
     this.next();
   }
 
