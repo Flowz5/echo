@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "sprites": "python3 tools/gen_sprites.py",
-    "test": "vitest run"
+    "test": "vitest run",
+    "solve": "vitest run --config tools/solver/vitest.config.ts tools/solver/cases.solve.ts",
+    "solve:replay": "vitest run --config tools/solver/vitest.config.ts tools/solver/replay.solve.ts"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

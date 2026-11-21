@@ -1,0 +1,216 @@
+[
+ [
+  "0-9 island page: not without (hilltop)",
+  "lumis_field",
+  [
+   15,
+   7
+  ],
+  {
+   "kind": "entity",
+   "entity": "page"
+  },
+  [
+   "doubleJump",
+   "wallJump"
+  ],
+  false
+ ],
+ [
+  "0-9 island page: not without (start)",
+  "lumis_field",
+  [
+   1,
+   8
+  ],
+  {
+   "kind": "entity",
+   "entity": "page"
+  },
+  [
+   "doubleJump",
+   "wallJump"
+  ],
+  false
+ ],
+ [
+  "0-12 pit: crossable with the dash",
+  "shard_of_motion",
+  [
+   11,
+   21
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    22,
+    0,
+    34,
+    20
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump",
+   "dash"
+  ],
+  true
+ ],
+ [
+  "0-12 pit: no way across without the shard",
+  "shard_of_motion",
+  [
+   11,
+   21
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    22,
+    0,
+    34,
+    20
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump"
+  ],
+  false,
+  [
+   "shard"
+  ]
+ ],
+ [
+  "0-12 pit: no way across without the shard (planks)",
+  "shard_of_motion",
+  [
+   2,
+   7
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    22,
+    0,
+    34,
+    20
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump"
+  ],
+  false,
+  [
+   "shard"
+  ]
+ ],
+ [
+  "0-14 chimney needs the wall jump",
+  "thorn_steps",
+  [
+   16,
+   14
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    38,
+    0,
+    46,
+    3
+   ]
+  },
+  [
+   "doubleJump",
+   "dash"
+  ],
+  false
+ ],
+ [
+  "0-14 beat 2: slab to ledge",
+  "thorn_steps",
+  [
+   16,
+   14
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    38,
+    0,
+    46,
+    3
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump",
+   "dash"
+  ],
+  true
+ ],
+ [
+  "0-14 beat 3: ledge to slab",
+  "thorn_steps",
+  [
+   42,
+   4
+  ],
+  {
+   "kind": "tile",
+   "rect": [
+    70,
+    0,
+    74,
+    6
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump",
+   "dash"
+  ],
+  true
+ ],
+ [
+  "0-14 beat 4: slab to exit",
+  "thorn_steps",
+  [
+   72,
+   7
+  ],
+  {
+   "kind": "exit",
+   "side": "right",
+   "rows": [
+    0,
+    3
+   ]
+  },
+  [
+   "doubleJump",
+   "wallJump",
+   "dash"
+  ],
+  true
+ ],
+ [
+  "0-14a Spire page: not without the dash",
+  "thorn_spire",
+  [
+   30,
+   11
+  ],
+  {
+   "kind": "entity",
+   "entity": "page"
+  },
+  [
+   "doubleJump",
+   "wallJump"
+  ],
+  false
+ ]
+]
