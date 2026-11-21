@@ -40,6 +40,7 @@ Place **point objects** (Insert Point, shortcut `I`) and set their **Class** in 
 | `spawn` | Where Iris's **feet** appear. Put one near each entrance: when Iris enters a room, she respawns at the closest one if she dies |
 | `checkpoint` | An **Echo Crystal**. Place the point on the ground (the crystal's base). Touching it makes it the respawn point, refills the dash and double jump, and keeps the collectibles picked up since the last checkpoint |
 | `shrine` | A **Bell Shrine** (on the ground). Works like a checkpoint for now; later: saving and fast travel |
+| `exit` | A **chapter exit**. Properties `chapter` (string, e.g. `chapter1`) and `room` (string, a room of that chapter), optional `spawn` (int, which spawn of that room Iris arrives on, default 0). A point marks the whole column it stands in, top to bottom; a rectangle marks just its area. Put it against the room edge, and make sure the arrival spawn is not on the other side's exit (`tools/check_world.py` checks it). Room names must be unique across all chapters |
 | `shard` | A **Bell Shard**. Property `unlocks` (string): `dash`, `rewind`, `doubleJump`, `wallJump` or `echo` (+1 echo slot). Kept immediately, shows a tutorial banner |
 | `note` | A **Resonant Note** (collectible) |
 | `page` | A **Lost Page** (collectible) |

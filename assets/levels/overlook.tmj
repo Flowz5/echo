@@ -465,38 +465,41 @@
     {
      "id": 3,
      "name": "",
-     "type": "text",
+     "type": "spawn",
      "point": true,
-     "x": 200.0,
-     "y": 160,
+     "x": 344.0,
+     "y": 240,
      "width": 0,
      "height": 0,
      "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "text",
-       "type": "string",
-       "value": "CHAPTER 1: STARFALL RUINS"
-      }
-     ]
+     "visible": true
     },
     {
      "id": 4,
      "name": "",
-     "type": "text",
+     "type": "exit",
      "point": true,
-     "x": 200.0,
-     "y": 176,
+     "x": 360.0,
+     "y": 240,
      "width": 0,
      "height": 0,
      "rotation": 0,
      "visible": true,
      "properties": [
       {
-       "name": "text",
+       "name": "chapter",
        "type": "string",
-       "value": "COMING SOON"
+       "value": "chapter1"
+      },
+      {
+       "name": "room",
+       "type": "string",
+       "value": "gorge_gate"
+      },
+      {
+       "name": "spawn",
+       "type": "int",
+       "value": 0
       }
      ]
     },
